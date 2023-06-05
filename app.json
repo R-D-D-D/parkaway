@@ -11,16 +11,24 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "config": {
+        "googleMapsApiKey": "AIzaSyCrcVZBa5mm3WnW7m5m1kpSfxc5kakuflA"
+      },
+      "bundleIdentifier": "com.company.parking"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
+      },
+      "package": "com.company.parking",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyBTbYwhEn9JxE1VcX3zOMLSBIA0iTLjnDw"
+        }
       }
     },
     "web": {
