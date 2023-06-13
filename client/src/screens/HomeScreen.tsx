@@ -10,12 +10,16 @@ import MapView, {
 } from "react-native-maps"
 import { mapStyle } from "../global/mapStyle"
 import * as Location from "expo-location"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useContext } from "react"
 import { Tooltip, Button } from "react-native-elements"
 import { getDistance } from "geolib"
 import CustomMarker from "../components/Marker"
 import Panel, { PanelType } from "../components/Panel/Panel"
 import RecenterBtn from "../components/RecenterBtn"
+import { AppContext } from "../context"
+import { useNavigation } from "@react-navigation/native"
+import { NativeStackNavigationProp } from "@react-navigation/native-stack"
+import { RootStackParamList } from "../navigation"
 
 const SCREEN_WIDTH = Dimensions.get("window").width
 const LAT_DELTA = 0.005
@@ -27,6 +31,11 @@ interface ILotInfo {
   free: number
   total: number
 }
+
+type HomeScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  "Home"
+>
 
 const HomeScreen = () => {
   const [map, setMap] = useState(null)
@@ -40,6 +49,9 @@ const HomeScreen = () => {
   )
   const [calloutShown, setCalloutShown] = useState(null)
   const [parkedAt, setParkedAt] = useState(null)
+  const appContext = useContext(AppContext)
+  const navigation = useNavigation<HomeScreenNavigationProp>()
+
   const handleCenter = () => {
     const { latitude, longitude } = latLng
     map.animateToRegion({
@@ -92,7 +104,14 @@ const HomeScreen = () => {
   }
 
   useEffect(() => {
-    checkPermission()
+    const init = async () => {
+      if (appContext.user) {
+        checkPermission()
+      } else {
+        navigation.navigate("LogIn")
+      }
+    }
+    init()
   }, [])
 
   const onUserLocationChange = ({ nativeEvent }) => {
@@ -189,7 +208,7 @@ const HomeScreen = () => {
 export default HomeScreen
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    // flex: 1,
     backgroundColor: colors.white,
     paddingTop: parameters.statusBarHeight,
   },

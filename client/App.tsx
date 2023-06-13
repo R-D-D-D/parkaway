@@ -5,6 +5,8 @@ import HomeScreen from "./src/screens/HomeScreen"
 import * as SplashScreen from "expo-splash-screen"
 import * as Font from "expo-font"
 import { useCallback, useEffect, useState } from "react"
+import { AppContext } from "./src/context"
+import { RootStack } from "./src/navigation"
 
 const SCREEN_WIDTH = Dimensions.get("window").width
 SplashScreen.preventAutoHideAsync()
@@ -46,9 +48,11 @@ const App = () => {
   }
 
   return (
-    <View style={styles.container} onLayout={onLayoutRootView}>
-      <HomeScreen />
-    </View>
+    <AppContext.Provider value={{ user: undefined }}>
+      <View style={styles.container} onLayout={onLayoutRootView}>
+        <RootStack />
+      </View>
+    </AppContext.Provider>
   )
 }
 
@@ -56,9 +60,9 @@ export default App
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.white,
-    paddingBottom: 30,
+    // alignItems: "center",
+    // justifyContent: "center",
+    // backgroundColor: colors.white,
+    // paddingBottom: 30,
   },
 })
