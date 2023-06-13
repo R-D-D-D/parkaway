@@ -11,21 +11,25 @@ const Marker = (props) => {
   }
 
   return (
-    <View style={StyleSheet.flatten([styles.container, getStyle()])}>
-      <View>
-        <Text>
-          {free} / {total}
-        </Text>
-      </View>
+    <View style={styles.container}>
+      <Text>
+        {free} / {total}
+      </Text>
     </View>
   )
 }
 export default Marker
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    width: 50,
-    height: 20,
-    color: colors.white,
+    width: 60,
+    height: 30,
+    fontSize: 24,
+    backgroundColor: colors.white,
+    borderRadius: 6,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 4,
+    borderColor: colors.grey4,
+    borderWidth: 1,
   },
 })

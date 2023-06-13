@@ -6,6 +6,7 @@ import MapView, {
   Marker,
   Callout,
   CalloutSubview,
+  MapPressEvent,
 } from "react-native-maps"
 import { mapStyle } from "../global/mapStyle"
 import * as Location from "expo-location"
@@ -13,23 +14,41 @@ import { useEffect, useRef, useState } from "react"
 import { Tooltip, Button } from "react-native-elements"
 import { getDistance } from "geolib"
 import CustomMarker from "../components/Marker"
-import Panel from "../components/Panel"
+import Panel, { PanelType } from "../components/Panel/Panel"
+import RecenterBtn from "../components/RecenterBtn"
 
 const SCREEN_WIDTH = Dimensions.get("window").width
 const LAT_DELTA = 0.005
 const LNG_DELTA = 0.0025
 
+interface ILotInfo {
+  latitude: number
+  longitude: number
+  free: number
+  total: number
+}
+
 const HomeScreen = () => {
-  const mapRef = useRef(1)
+  const [map, setMap] = useState(null)
+  // coordinate of the current user
   const [latLng, setLatLng] = useState(null)
   const [errMsg, setErrorMsg] = useState(null)
-  const [parkingLotConfigs, setParkingLotConfigs] = useState([])
+  // stores information such as coord of the parking lot and the number of free, total lots
+  const [lotsInfo, setLotsInfo] = useState<ILotInfo[]>([])
   const parkingIconRefs = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1].map((x) =>
     useRef(null)
   )
   const [calloutShown, setCalloutShown] = useState(null)
   const [parkedAt, setParkedAt] = useState(null)
-
+  const handleCenter = () => {
+    const { latitude, longitude } = latLng
+    map.animateToRegion({
+      latitude,
+      longitude,
+      latitudeDelta: LAT_DELTA,
+      longitudeDelta: LNG_DELTA,
+    })
+  }
   const randomPlusMinus = () => {
     if (Math.random() < 0.5) {
       return -1
@@ -39,7 +58,7 @@ const HomeScreen = () => {
   }
 
   const generateParkingLatLngs = (latitude, longitude) => {
-    const parkingLots = []
+    const parkingLots: ILotInfo[] = []
     for (let i = 0; i < 11; i++) {
       const total = Math.floor(Math.random() * 3) + 1
       parkingLots.push({
@@ -55,7 +74,7 @@ const HomeScreen = () => {
       free: 1,
       total: 3,
     })
-    setParkingLotConfigs(parkingLots)
+    setLotsInfo(parkingLots)
   }
 
   const checkPermission = async () => {
@@ -77,12 +96,10 @@ const HomeScreen = () => {
   }, [])
 
   const onUserLocationChange = ({ nativeEvent }) => {
-    // console.log(nativeEvent.coordinate)
-    // console.log(getDistance(latLng, nativeEvent.coordinate))
     for (let i = 0; i < 12; i++) {
       const distance = getDistance(nativeEvent.coordinate, {
-        latitude: parkingLotConfigs[i].latitude,
-        longitude: parkingLotConfigs[i].longitude,
+        latitude: lotsInfo[i].latitude,
+        longitude: lotsInfo[i].longitude,
       })
       if (distance < 30 && calloutShown !== i) {
         parkingIconRefs[i].current.showCallout()
@@ -92,17 +109,17 @@ const HomeScreen = () => {
   }
 
   const park = (idx) => {
-    const temp = [...parkingLotConfigs]
-    temp[idx].free = parkingLotConfigs[idx].free - 1
-    setParkingLotConfigs(temp)
+    const temp = [...lotsInfo]
+    temp[idx].free = lotsInfo[idx].free - 1
+    setLotsInfo(temp)
     setParkedAt(idx)
     parkingIconRefs[idx].current.hideCallout()
   }
 
   const leave = (idx) => {
-    const temp = [...parkingLotConfigs]
-    temp[idx].free = parkingLotConfigs[idx].free + 1
-    setParkingLotConfigs(temp)
+    const temp = [...lotsInfo]
+    temp[idx].free = lotsInfo[idx].free + 1
+    setLotsInfo(temp)
     setParkedAt(null)
     parkingIconRefs[idx].current.hideCallout()
   }
@@ -118,65 +135,51 @@ const HomeScreen = () => {
             customMapStyle={mapStyle}
             showsUserLocation={true}
             followsUserLocation={true}
-            ref={mapRef}
+            ref={(map) => setMap(map)}
             region={{
               latitude: latLng.latitude,
               longitude: latLng.longitude,
               latitudeDelta: LAT_DELTA,
               longitudeDelta: LNG_DELTA,
             }}
+            onPress={(e: MapPressEvent) => {
+              if (e.nativeEvent.action !== "marker-press") {
+                setCalloutShown(null)
+              }
+            }}
           >
-            {parkingLotConfigs.map((config, idx) => (
+            {lotsInfo.map((config, idx) => (
               <Marker
                 coordinate={{
                   latitude: config.latitude,
                   longitude: config.longitude,
                 }}
                 key={idx}
-                // pinColor={config.occupied ? colors.red : colors.green}
+                pinColor={config.free === 0 ? "red" : "green"}
                 ref={parkingIconRefs[idx]}
+                onPress={() => setCalloutShown(idx)}
               >
-                <CustomMarker free={config.free} total={config.total} />
+                {/* <Image
+                  source={require("../../assets/leave-action.png")}
+                  style={styles.parkingImg}
+                /> */}
                 {((config.free > 0 && parkedAt === null) ||
                   parkedAt === idx) && (
                   <Callout tooltip>
-                    <CalloutSubview
-                      onPress={() => {
-                        parkedAt !== null && parkedAt === idx
-                          ? leave(idx)
-                          : config.free > 0
-                          ? park(idx)
-                          : "Full"
-                      }}
-                    >
-                      <Button
-                        style={{
-                          width: 80,
-                        }}
-                        title={
-                          parkedAt !== null && parkedAt === idx
-                            ? "Leave"
-                            : config.free > 0
-                            ? "Park"
-                            : "Full"
-                        }
-                      />
-                    </CalloutSubview>
+                    <CustomMarker free={config.free} total={config.total} />
                   </Callout>
                 )}
-                {/* <Tooltip
-                  popover={<Text>Info here</Text>}
-                  ref={(el) => (parkingIconRefs.current[idx] = el)}
-                >
-                  <Image
-                    source={require("../../assets/parking-sign.png")}
-                    style={styles.parkingImg}
-                  />
-                </Tooltip> */}
               </Marker>
             ))}
           </MapView>
-          <Panel />
+          <RecenterBtn style={styles.recenterBtn} onPress={handleCenter} />
+          <Panel
+            type={
+              calloutShown === null
+                ? PanelType.AllLotsInfo
+                : PanelType.SingleLotInfo
+            }
+          />
         </View>
       )}
     </View>
@@ -195,7 +198,11 @@ const styles = StyleSheet.create({
     height: parameters.headerHeight,
     alignItems: "flex-start",
   },
-
+  recenterBtn: {
+    position: "absolute",
+    bottom: 320,
+    right: 20,
+  },
   image1: {
     height: 100,
     width: 100,

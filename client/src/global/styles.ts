@@ -21,8 +21,8 @@ export const colors = {
   white: "#ffffff",
   darkBlue: "#2d328a",
   pagebackground: "white",
-  red: "#FF0000",
-  green: "#00FF00",
+  red: "#FF5252",
+  green: "#7DF47D",
 }
 
 export const parameters = {
