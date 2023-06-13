@@ -1,4 +1,5 @@
 import express from "express"
+import { createUser } from "./controllers/users"
 const router = express.Router()
 
 // middleware that is specific to this router
@@ -8,12 +9,10 @@ const router = express.Router()
 // })
 
 // define the home page route
-router.get("/", (req, res) => {
-  res.send("Birds home page")
-})
+router.post("/user", createUser)
 
 // define the about route
-router.get("/about", (req, res) => {
+router.get("/user/:userId", (req, res) => {
   res.send("About birds")
 })
 

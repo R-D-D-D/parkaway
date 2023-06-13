@@ -1,6 +1,8 @@
 import { Request, Response } from "express"
-import db from "../db"
+import { IUser, create } from "../models/user"
 
-export const create = async (req: Request, res: Response) => {
-  const user = req.body
+export const createUser = async (req: Request, res: Response) => {
+  const user: IUser = req.body
+  await create(user)
+  res.send("Success")
 }

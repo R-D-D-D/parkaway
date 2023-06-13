@@ -1,4 +1,4 @@
-import db from "../db"
+import { syncAll, syncRun } from "../db"
 import { getUnixTime } from "../utils/date"
 
 export interface IUser {
@@ -9,11 +9,8 @@ export interface IUser {
 
 export const create = async (user: IUser) => {
   const { username, email, userPassword } = user
-  db.run(
+  await syncRun(
     "INSERT INTO users (username, email, user_password, created_at) VALUES (?, ?, ?)",
-    [username, email, userPassword, getUnixTime(new Date())],
-    (err: unknown) => {
-      console.log(err)
-    }
+    [username, email, userPassword, getUnixTime(new Date())]
   )
 }
