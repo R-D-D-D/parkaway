@@ -33,12 +33,19 @@ export function syncAll<T>(command: string, params?: any): Promise<T[]> {
   })
 }
 
-export function syncGet<T>(command: string, params?: any): Promise<T> {
+export function syncGet<T>(
+  command: string,
+  params?: any
+): Promise<{ [k: string]: T }> {
   return new Promise((res, rej) => {
-    db.get<T>(command, params, (err: Error | null, row: T) => {
-      if (err !== null) rej(err)
-      res(row)
-    })
+    db.get<{ [k: string]: T }>(
+      command,
+      params,
+      (err: Error | null, row: { [k: string]: T }) => {
+        if (err !== null) rej(err)
+        res(row)
+      }
+    )
   })
 }
 

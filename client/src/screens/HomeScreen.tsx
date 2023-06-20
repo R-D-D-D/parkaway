@@ -7,6 +7,7 @@ import MapView, {
   Callout,
   CalloutSubview,
   MapPressEvent,
+  MapMarker,
 } from "react-native-maps"
 import { mapStyle } from "../global/mapStyle"
 import * as Location from "expo-location"
@@ -23,6 +24,7 @@ import { RootStackParamList } from "../navigation"
 import { useIsFocused } from "@react-navigation/core"
 import AdminEditBtn from "../components/AdminEditBtn"
 import { ParkingLot, parkingApi } from "../api/parking_lot"
+import { wait } from "../utils/time"
 const SCREEN_WIDTH = Dimensions.get("window").width
 const LAT_DELTA = 0.005
 const LNG_DELTA = 0.0025
@@ -37,8 +39,7 @@ const HomeScreen = () => {
   // coordinate of the current user
   const [latLng, setLatLng] = useState(null)
   const [errMsg, setErrorMsg] = useState(null)
-  // stores information such as coord of the parking lot and the number of free, total lots
-  let parkingIconRefs
+  let markerRefs = useRef<MapMarker[]>([])
   const [calloutShown, setCalloutShown] = useState<number>(null)
   const [parkedAt, setParkedAt] = useState(null)
   const appContext = useContext(AppContext)
@@ -50,6 +51,7 @@ const HomeScreen = () => {
     latitude: number
   }>(null)
   const [isAdminEditing, setIsAdminEditing] = useState(false)
+  const [rerenderMarkersFlag, triggerRerenderMarkers] = useState(false)
 
   const handleCenter = () => {
     const { latitude, longitude } = latLng
@@ -87,12 +89,25 @@ const HomeScreen = () => {
   }
 
   useEffect(() => {
+    let userParkedFlag = false
+    parkingLots.forEach((lot) => {
+      if (
+        lot.currUsers.findIndex((user) => user.id === appContext.user.id) >= 0
+      ) {
+        setParkedAt(lot.id)
+        userParkedFlag = true
+      }
+    })
+    if (!userParkedFlag) setParkedAt(null)
+  }, [parkingLots])
+
+  useEffect(() => {
     const init = async () => {
-      console.log("Initializing with context: ", appContext)
+      // console.log("Initializing with context: ", appContext)
       if (appContext.user) {
         checkPermission()
         const lots = (await parkingApi.listParkingLots()).data
-        // parkingIconRefs = lots.map((x) => useRef(null))
+
         setParkingLots(lots)
       } else {
         navigation.navigate("LogIn")
@@ -108,7 +123,7 @@ const HomeScreen = () => {
         longitude: parkingLots[i].longitude,
       })
       // if (distance < 30 && calloutShown !== i) {
-      //   parkingIconRefs[i].current.showCallout()
+      //   markerRefs[i].current.showCallout()
       //   setCalloutShown(i)
       // }
     }
@@ -119,7 +134,7 @@ const HomeScreen = () => {
   //   temp[idx].free = lotsInfo[idx].free - 1
   //   setLotsInfo(temp)
   //   setParkedAt(idx)
-  //   parkingIconRefs[idx].current.hideCallout()
+  //   markerRefs[idx].current.hideCallout()
   // }
 
   // const leave = (idx) => {
@@ -127,7 +142,7 @@ const HomeScreen = () => {
   //   temp[idx].free = lotsInfo[idx].free + 1
   //   setLotsInfo(temp)
   //   setParkedAt(null)
-  //   parkingIconRefs[idx].current.hideCallout()
+  //   markerRefs[idx].current.hideCallout()
   // }
 
   const handleNewParkingLot = (e: MapPressEvent) => {
@@ -140,6 +155,11 @@ const HomeScreen = () => {
   const resetParkingLots = async () => {
     const lots = (await parkingApi.listParkingLots()).data
     setParkingLots(lots)
+    triggerRerenderMarkers(!rerenderMarkersFlag)
+    await wait(10)
+    if (calloutShown !== null) {
+      markerRefs.current[calloutShown].showCallout()
+    }
   }
   const handleCreateParkingLot = async (parkingLot: Omit<ParkingLot, "id">) => {
     await parkingApi.createParkingLot(parkingLot)
@@ -180,21 +200,26 @@ const HomeScreen = () => {
                   latitude: lot.latitude,
                   longitude: lot.longitude,
                 }}
-                key={idx}
-                pinColor={lot.freeLots === 0 ? "red" : "green"}
-                // ref={parkingIconRefs[idx]}
+                key={`${lot.id}${rerenderMarkersFlag}`}
+                pinColor={
+                  parkedAt === lot.id
+                    ? undefined
+                    : lot.freeLots === 0
+                    ? "red"
+                    : "green"
+                }
+                ref={(el) => (markerRefs.current[idx] = el)}
                 onPress={() => setCalloutShown(idx)}
               >
-                {/* <Image
-                  source={require("../../assets/leave-action.png")}
-                  style={styles.parkingImg}
-                /> */}
-                {((lot.freeLots > 0 && parkedAt === null) ||
-                  parkedAt === idx) && (
-                  <Callout tooltip>
-                    <CustomMarker free={lot.freeLots} total={lot.totalLots} />
-                  </Callout>
+                {parkedAt === lot.id && (
+                  <Image
+                    source={require("../../assets/car_side_view.png")}
+                    style={styles.parkingImg}
+                  />
                 )}
+                <Callout tooltip>
+                  <CustomMarker free={lot.freeLots} total={lot.totalLots} />
+                </Callout>
               </Marker>
             ))}
             {newParkingLot && (
@@ -381,8 +406,8 @@ const styles = StyleSheet.create({
 
   view8: { flex: 4, marginTop: -25 },
   parkingImg: {
-    width: 14,
-    height: 14,
+    width: 68,
+    height: 32,
   },
 
   location: {

@@ -49,7 +49,7 @@ const LogInScreen = () => {
       if (signinInfo.email && signinInfo.userPassword) {
         try {
           const resp = await userApi.signinUser(signinInfo)
-          console.log("[LoginScreen: signin user call]", resp)
+          // console.log("[LoginScreen: signin user call]", resp)
           if (resp.status === "success") {
             showShortToast("success")
             setUser(resp.data)
@@ -70,7 +70,7 @@ const LogInScreen = () => {
       ) {
         try {
           const resp = await userApi.createUser(signupInfo)
-          console.log("[LoginScreen: create user call]", resp)
+          // console.log("[LoginScreen: create user call]", resp)
           if (resp.status === "success") {
             showShortToast("success")
             setUser(resp.data)

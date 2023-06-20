@@ -12,7 +12,7 @@ interface IProps {
   resetParkingLots: () => Promise<void>
 }
 const SingleLotInfo = (props: IProps) => {
-  console.log("[SingleLotInfo] props:", props)
+  // console.log("[SingleLotInfo] props:", props)
   const { calloutShown, parkingLots, resetParkingLots } = props
   const { user } = useContext(AppContext)
 
@@ -37,7 +37,7 @@ const SingleLotInfo = (props: IProps) => {
 
           <View style={styles.avatarRowContainer}>
             {[...Array(parkingLot.freeLots).keys()].map((idx) => (
-              <View style={styles.avatarContainer}>
+              <View style={styles.avatarContainer} key={`empty-${idx}`}>
                 <Image
                   source={require("../../../assets/grey-avatar.png")}
                   style={styles.avatar}
@@ -48,7 +48,7 @@ const SingleLotInfo = (props: IProps) => {
             ))}
             {[...Array(parkingLot.totalLots - parkingLot.freeLots).keys()].map(
               (idx) => (
-                <View style={styles.avatarContainer}>
+                <View style={styles.avatarContainer} key={`occupied-${idx}`}>
                   <Image
                     source={require("../../../assets/man.png")}
                     style={styles.avatar}
@@ -61,10 +61,10 @@ const SingleLotInfo = (props: IProps) => {
           </View>
           <Button
             title={
-              parkingLot.freeLots === 0
-                ? isUserParkingHere
-                  ? "Leave"
-                  : "Unavailable"
+              isUserParkingHere
+                ? "Leave"
+                : parkingLot.freeLots === 0
+                ? "Unavailable"
                 : "Park"
             }
             buttonStyle={{

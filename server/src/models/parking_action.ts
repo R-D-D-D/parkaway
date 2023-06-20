@@ -31,30 +31,24 @@ export const create = async ({
   parkingLotId: number
   isPark: boolean
 }): Promise<void> => {
-  const newUsers: Array<number> = JSON.parse(
-    await syncGet<string>("SELECT curr_users FROM parking_lots WHERE id = ?", [
-      parkingLotId,
-    ])
+  const { curr_users } = await syncGet<string>(
+    "SELECT curr_users FROM parking_lots WHERE id = ?",
+    [parkingLotId]
   )
+  const newUsers: Array<number> = JSON.parse(curr_users)
   if (isPark) {
-    newUsers.splice(newUsers.indexOf(userId), 1)
-  } else {
     newUsers.push(userId)
+  } else {
+    newUsers.splice(newUsers.indexOf(userId), 1)
   }
   await syncRun(
-    `INSERT INTO parking_actions (user_id, parking_lot_id, is_park, created_at) VALUES (?, ?, ?, ?);
-    UPDATE parking_lots SET free_lots = (SELECT free_lots ${
+    `INSERT INTO parking_actions (user_id, parking_lot_id, is_park, created_at) VALUES (?, ?, ?, ?)`,
+    [userId, parkingLotId, isPark, getUnixTime(new Date())]
+  )
+  await syncRun(
+    `UPDATE parking_lots SET free_lots = (SELECT free_lots ${
       isPark ? "-" : "+"
-    } 1 FROM parking_lots WHERE id = ?), curr_users = ? WHERE id = ?;
-    `,
-    [
-      userId,
-      parkingLotId,
-      isPark,
-      getUnixTime(new Date()),
-      parkingLotId,
-      newUsers,
-      parkingLotId,
-    ]
+    } 1 FROM parking_lots WHERE id = ?), curr_users = ? WHERE id = ?`,
+    [parkingLotId, JSON.stringify(newUsers), parkingLotId]
   )
 }
