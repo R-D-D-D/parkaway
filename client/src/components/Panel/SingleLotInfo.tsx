@@ -1,40 +1,88 @@
 import { StyleSheet, Text, View } from "react-native"
-import React from "react"
+import React, { useContext } from "react"
 import { Image, Button } from "react-native-elements"
 import { colors } from "../../global/styles"
+import { ParkingLot } from "../../api/parking_lot"
+import { AppContext } from "../../context"
+import { parkingActionApi } from "../../api/parking_action"
 
-const SingleLotInfo = () => {
+interface IProps {
+  calloutShown: number | null
+  parkingLots: ParkingLot[]
+  resetParkingLots: () => Promise<void>
+}
+const SingleLotInfo = (props: IProps) => {
+  console.log("[SingleLotInfo] props:", props)
+  const { calloutShown, parkingLots, resetParkingLots } = props
+  const { user } = useContext(AppContext)
+
+  const parkingLot = parkingLots[calloutShown]
+  const isUserParkingHere =
+    parkingLot?.currUsers.find((u) => u.id === user.id) !== undefined
+
+  const handlePark = async () => {
+    await parkingActionApi.createParkingAction({
+      userId: user.id,
+      parkingLotId: parkingLot.id,
+      isPark: !isUserParkingHere,
+    })
+    await resetParkingLots()
+  }
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.text1}>Available parking lots</Text>
-      <View style={styles.avatarRowContainer}>
-        <View style={styles.avatarContainer}>
-          <Image
-            source={require("../../../assets/man.png")}
-            style={styles.avatar}
+    <>
+      {parkingLot && (
+        <View style={styles.container}>
+          <Text style={styles.text1}>Lot 1</Text>
+
+          <View style={styles.avatarRowContainer}>
+            {[...Array(parkingLot.freeLots).keys()].map((idx) => (
+              <View style={styles.avatarContainer}>
+                <Image
+                  source={require("../../../assets/grey-avatar.png")}
+                  style={styles.avatar}
+                />
+                <Text>Available</Text>
+                <Text style={styles.timeText}></Text>
+              </View>
+            ))}
+            {[...Array(parkingLot.totalLots - parkingLot.freeLots).keys()].map(
+              (idx) => (
+                <View style={styles.avatarContainer}>
+                  <Image
+                    source={require("../../../assets/man.png")}
+                    style={styles.avatar}
+                  />
+                  <Text>Mark</Text>
+                  <Text style={styles.timeText}>Here since 16:45</Text>
+                </View>
+              )
+            )}
+          </View>
+          <Button
+            title={
+              parkingLot.freeLots === 0
+                ? isUserParkingHere
+                  ? "Leave"
+                  : "Unavailable"
+                : "Park"
+            }
+            buttonStyle={{
+              backgroundColor:
+                parkingLot.freeLots === 0 && !isUserParkingHere
+                  ? colors.grey4
+                  : colors.red,
+            }}
+            containerStyle={{
+              width: 200,
+              alignSelf: "center",
+            }}
+            titleStyle={{ color: "white", marginHorizontal: 20 }}
+            onPress={() => handlePark()}
           />
-          <Text>Mark</Text>
-          <Text style={styles.timeText}>Here since 16:45</Text>
         </View>
-        <View style={styles.avatarContainer}>
-          <Image
-            source={require("../../../assets/woman.png")}
-            style={styles.avatar}
-          />
-          <Text>Jean</Text>
-          <Text style={styles.timeText}>Here since 13:45</Text>
-        </View>
-      </View>
-      <Button
-        title="Park"
-        buttonStyle={{ backgroundColor: colors.red }}
-        containerStyle={{
-          width: 200,
-          alignSelf: "center",
-        }}
-        titleStyle={{ color: "white", marginHorizontal: 20 }}
-      />
-    </View>
+      )}
+    </>
   )
 }
 
@@ -50,7 +98,7 @@ const styles = StyleSheet.create({
   avatarRowContainer: {
     flexDirection: "row",
     justifyContent: "space-around",
-    marginVertical: 36,
+    marginVertical: 32,
   },
   avatarContainer: {
     alignItems: "center",

@@ -3,22 +3,55 @@ import React, { Component } from "react"
 import { colors, parameters } from "../../global/styles"
 import AllLotsInfo from "./AllLotsInfo"
 import SingleLotInfo from "./SingleLotInfo"
+import { ParkingLot } from "../../api/parking_lot"
+import EditParkingLots from "./EditParkingLots"
 
 export enum PanelType {
   AllLotsInfo = 0,
   SingleLotInfo,
+  AdminEdit,
 }
 
 interface IPanelProps {
   type: PanelType
+  isAdminEditing: boolean
+  handleCreateParkingLot: (lot: Omit<ParkingLot, "id">) => void
+  newParkingLot: {
+    longitude: number
+    latitude: number
+  }
+  calloutShown: number | null
+  parkingLots: ParkingLot[]
+  resetParkingLots: () => Promise<void>
 }
 
 const Panel = (props: IPanelProps) => {
-  const { type } = props
+  const {
+    type,
+    isAdminEditing,
+    handleCreateParkingLot,
+    newParkingLot,
+    calloutShown,
+    parkingLots,
+    resetParkingLots,
+  } = props
   const isAllLotsInfo = type === PanelType.AllLotsInfo
   return (
     <View style={styles.container}>
-      {isAllLotsInfo ? <AllLotsInfo /> : <SingleLotInfo />}
+      {isAdminEditing ? (
+        <EditParkingLots
+          handleCreateParkingLot={handleCreateParkingLot}
+          newParkingLot={newParkingLot}
+        />
+      ) : isAllLotsInfo ? (
+        <AllLotsInfo />
+      ) : (
+        <SingleLotInfo
+          calloutShown={calloutShown}
+          parkingLots={parkingLots}
+          resetParkingLots={resetParkingLots}
+        />
+      )}
     </View>
   )
 }

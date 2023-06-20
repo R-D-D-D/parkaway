@@ -20,17 +20,12 @@ import { AppContext } from "../context"
 import { useNavigation } from "@react-navigation/native"
 import { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { RootStackParamList } from "../navigation"
-
+import { useIsFocused } from "@react-navigation/core"
+import AdminEditBtn from "../components/AdminEditBtn"
+import { ParkingLot, parkingApi } from "../api/parking_lot"
 const SCREEN_WIDTH = Dimensions.get("window").width
 const LAT_DELTA = 0.005
 const LNG_DELTA = 0.0025
-
-interface ILotInfo {
-  latitude: number
-  longitude: number
-  free: number
-  total: number
-}
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -43,14 +38,18 @@ const HomeScreen = () => {
   const [latLng, setLatLng] = useState(null)
   const [errMsg, setErrorMsg] = useState(null)
   // stores information such as coord of the parking lot and the number of free, total lots
-  const [lotsInfo, setLotsInfo] = useState<ILotInfo[]>([])
-  const parkingIconRefs = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1].map((x) =>
-    useRef(null)
-  )
-  const [calloutShown, setCalloutShown] = useState(null)
+  let parkingIconRefs
+  const [calloutShown, setCalloutShown] = useState<number>(null)
   const [parkedAt, setParkedAt] = useState(null)
   const appContext = useContext(AppContext)
   const navigation = useNavigation<HomeScreenNavigationProp>()
+  const isFocused = useIsFocused()
+  const [parkingLots, setParkingLots] = useState<ParkingLot[]>([])
+  const [newParkingLot, setNewParkingLot] = useState<{
+    longitude: number
+    latitude: number
+  }>(null)
+  const [isAdminEditing, setIsAdminEditing] = useState(false)
 
   const handleCenter = () => {
     const { latitude, longitude } = latLng
@@ -61,32 +60,17 @@ const HomeScreen = () => {
       longitudeDelta: LNG_DELTA,
     })
   }
+
+  const handleEdit = () => {
+    setIsAdminEditing(!isAdminEditing)
+  }
+
   const randomPlusMinus = () => {
     if (Math.random() < 0.5) {
       return -1
     } else {
       return 1
     }
-  }
-
-  const generateParkingLatLngs = (latitude, longitude) => {
-    const parkingLots: ILotInfo[] = []
-    for (let i = 0; i < 11; i++) {
-      const total = Math.floor(Math.random() * 3) + 1
-      parkingLots.push({
-        latitude: latitude + Math.random() * LAT_DELTA * randomPlusMinus(),
-        longitude: longitude + Math.random() * LNG_DELTA * randomPlusMinus(),
-        free: Math.floor(total * Math.random()),
-        total,
-      })
-    }
-    parkingLots.push({
-      latitude: latitude,
-      longitude: longitude,
-      free: 1,
-      total: 3,
-    })
-    setLotsInfo(parkingLots)
   }
 
   const checkPermission = async () => {
@@ -100,47 +84,67 @@ const HomeScreen = () => {
       coords: { latitude, longitude },
     } = await Location.getCurrentPositionAsync({})
     setLatLng({ latitude, longitude })
-    generateParkingLatLngs(latitude, longitude)
   }
 
   useEffect(() => {
     const init = async () => {
+      console.log("Initializing with context: ", appContext)
       if (appContext.user) {
         checkPermission()
+        const lots = (await parkingApi.listParkingLots()).data
+        // parkingIconRefs = lots.map((x) => useRef(null))
+        setParkingLots(lots)
       } else {
         navigation.navigate("LogIn")
       }
     }
     init()
-  }, [])
+  }, [isFocused])
 
   const onUserLocationChange = ({ nativeEvent }) => {
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < parkingLots.length; i++) {
       const distance = getDistance(nativeEvent.coordinate, {
-        latitude: lotsInfo[i].latitude,
-        longitude: lotsInfo[i].longitude,
+        latitude: parkingLots[i].latitude,
+        longitude: parkingLots[i].longitude,
       })
-      if (distance < 30 && calloutShown !== i) {
-        parkingIconRefs[i].current.showCallout()
-        setCalloutShown(i)
-      }
+      // if (distance < 30 && calloutShown !== i) {
+      //   parkingIconRefs[i].current.showCallout()
+      //   setCalloutShown(i)
+      // }
     }
   }
 
-  const park = (idx) => {
-    const temp = [...lotsInfo]
-    temp[idx].free = lotsInfo[idx].free - 1
-    setLotsInfo(temp)
-    setParkedAt(idx)
-    parkingIconRefs[idx].current.hideCallout()
+  // const park = (idx) => {
+  //   const temp = [...lotsInfo]
+  //   temp[idx].free = lotsInfo[idx].free - 1
+  //   setLotsInfo(temp)
+  //   setParkedAt(idx)
+  //   parkingIconRefs[idx].current.hideCallout()
+  // }
+
+  // const leave = (idx) => {
+  //   const temp = [...lotsInfo]
+  //   temp[idx].free = lotsInfo[idx].free + 1
+  //   setLotsInfo(temp)
+  //   setParkedAt(null)
+  //   parkingIconRefs[idx].current.hideCallout()
+  // }
+
+  const handleNewParkingLot = (e: MapPressEvent) => {
+    setNewParkingLot({
+      longitude: e.nativeEvent.coordinate.longitude,
+      latitude: e.nativeEvent.coordinate.latitude,
+    })
   }
 
-  const leave = (idx) => {
-    const temp = [...lotsInfo]
-    temp[idx].free = lotsInfo[idx].free + 1
-    setLotsInfo(temp)
-    setParkedAt(null)
-    parkingIconRefs[idx].current.hideCallout()
+  const resetParkingLots = async () => {
+    const lots = (await parkingApi.listParkingLots()).data
+    setParkingLots(lots)
+  }
+  const handleCreateParkingLot = async (parkingLot: Omit<ParkingLot, "id">) => {
+    await parkingApi.createParkingLot(parkingLot)
+    await resetParkingLots()
+    setNewParkingLot(null)
   }
 
   return (
@@ -165,39 +169,68 @@ const HomeScreen = () => {
               if (e.nativeEvent.action !== "marker-press") {
                 setCalloutShown(null)
               }
+              if (isAdminEditing) {
+                handleNewParkingLot(e)
+              }
             }}
           >
-            {lotsInfo.map((config, idx) => (
+            {parkingLots.map((lot, idx) => (
               <Marker
                 coordinate={{
-                  latitude: config.latitude,
-                  longitude: config.longitude,
+                  latitude: lot.latitude,
+                  longitude: lot.longitude,
                 }}
                 key={idx}
-                pinColor={config.free === 0 ? "red" : "green"}
-                ref={parkingIconRefs[idx]}
+                pinColor={lot.freeLots === 0 ? "red" : "green"}
+                // ref={parkingIconRefs[idx]}
                 onPress={() => setCalloutShown(idx)}
               >
                 {/* <Image
                   source={require("../../assets/leave-action.png")}
                   style={styles.parkingImg}
                 /> */}
-                {((config.free > 0 && parkedAt === null) ||
+                {((lot.freeLots > 0 && parkedAt === null) ||
                   parkedAt === idx) && (
                   <Callout tooltip>
-                    <CustomMarker free={config.free} total={config.total} />
+                    <CustomMarker free={lot.freeLots} total={lot.totalLots} />
                   </Callout>
                 )}
               </Marker>
             ))}
+            {newParkingLot && (
+              <Marker
+                coordinate={{
+                  latitude: newParkingLot.latitude,
+                  longitude: newParkingLot.longitude,
+                }}
+                key={"new-parking-lot"}
+                pinColor={"red"}
+              >
+                {/* <Image
+                    source={require("../../assets/leave-action.png")}
+                    style={styles.parkingImg}
+                  /> */}
+              </Marker>
+            )}
           </MapView>
           <RecenterBtn style={styles.recenterBtn} onPress={handleCenter} />
+          <AdminEditBtn
+            style={styles.adminEditBtn}
+            onPress={handleEdit}
+            isAdminEditing={isAdminEditing}
+          />
           <Panel
             type={
               calloutShown === null
                 ? PanelType.AllLotsInfo
                 : PanelType.SingleLotInfo
             }
+            isAdminEditing={isAdminEditing}
+            handleCreateParkingLot={handleCreateParkingLot}
+            newParkingLot={newParkingLot}
+            calloutShown={calloutShown}
+            parkingLots={parkingLots}
+            resetParkingLots={resetParkingLots}
           />
         </View>
       )}
@@ -220,6 +253,11 @@ const styles = StyleSheet.create({
   recenterBtn: {
     position: "absolute",
     bottom: 320,
+    right: 20,
+  },
+  adminEditBtn: {
+    position: "absolute",
+    bottom: 390,
     right: 20,
   },
   image1: {

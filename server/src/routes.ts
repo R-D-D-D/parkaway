@@ -1,5 +1,10 @@
 import express from "express"
-import { createUser } from "./controllers/users"
+import { createUser, signinUser } from "./controllers/users"
+import { createParkingLot, listParkingLots } from "./controllers/parking_lot"
+import {
+  createParkingAction,
+  listParkingAction,
+} from "./controllers/parking_action"
 const router = express.Router()
 
 // middleware that is specific to this router
@@ -9,11 +14,11 @@ const router = express.Router()
 // })
 
 // define the home page route
-router.post("/user", createUser)
-
-// define the about route
-router.get("/user/:userId", (req, res) => {
-  res.send("About birds")
-})
+router.post("/users", createUser)
+router.post("/signin", signinUser)
+router.post("/parking-lots", createParkingLot)
+router.get("/parking-lots", listParkingLots)
+router.post("/parking-actions", createParkingAction)
+router.get("/parking-actions", listParkingAction)
 
 export default router

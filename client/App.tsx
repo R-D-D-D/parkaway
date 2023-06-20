@@ -5,14 +5,16 @@ import HomeScreen from "./src/screens/HomeScreen"
 import * as SplashScreen from "expo-splash-screen"
 import * as Font from "expo-font"
 import { useCallback, useEffect, useState } from "react"
-import { AppContext } from "./src/context"
+import { AppContext, IUser } from "./src/context"
 import { RootStack } from "./src/navigation"
+import { RootSiblingParent } from "react-native-root-siblings"
 
 const SCREEN_WIDTH = Dimensions.get("window").width
 SplashScreen.preventAutoHideAsync()
 
 const App = () => {
   const [appIsReady, setAppIsReady] = useState(false)
+  const [user, setUser] = useState<IUser>(null)
 
   useEffect(() => {
     async function prepare() {
@@ -48,11 +50,13 @@ const App = () => {
   }
 
   return (
-    <AppContext.Provider value={{ user: undefined }}>
-      <View style={styles.container} onLayout={onLayoutRootView}>
-        <RootStack />
-      </View>
-    </AppContext.Provider>
+    <RootSiblingParent>
+      <AppContext.Provider value={{ user, setUser }}>
+        <View style={styles.container} onLayout={onLayoutRootView}>
+          <RootStack />
+        </View>
+      </AppContext.Provider>
+    </RootSiblingParent>
   )
 }
 
