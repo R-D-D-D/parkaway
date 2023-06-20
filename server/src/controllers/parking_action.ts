@@ -14,9 +14,10 @@ export const createParkingAction = async (req: Request, res: Response) => {
 }
 
 export const listParkingAction = async (req: Request, res: Response) => {
-  const { limit } = req.params
+  const { limit } = req.query
+  console.log(limit)
   try {
-    const dbParkingActions = await list(parseInt(limit))
+    const dbParkingActions = await list(parseInt(limit as string))
     res.json({
       status: "success",
       data: dbParkingActions.map((lot) => objToCamelKey(lot)),

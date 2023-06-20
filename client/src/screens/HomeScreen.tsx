@@ -25,6 +25,7 @@ import { useIsFocused } from "@react-navigation/core"
 import AdminEditBtn from "../components/AdminEditBtn"
 import { ParkingLot, parkingApi } from "../api/parking_lot"
 import { wait } from "../utils/time"
+import { ParkingAction, parkingActionApi } from "../api/parking_action"
 const SCREEN_WIDTH = Dimensions.get("window").width
 const LAT_DELTA = 0.005
 const LNG_DELTA = 0.0025
@@ -52,6 +53,7 @@ const HomeScreen = () => {
   }>(null)
   const [isAdminEditing, setIsAdminEditing] = useState(false)
   const [rerenderMarkersFlag, triggerRerenderMarkers] = useState(false)
+  const [parkingActions, setParkingActions] = useState<ParkingAction[]>([])
 
   const handleCenter = () => {
     const { latitude, longitude } = latLng
@@ -107,8 +109,11 @@ const HomeScreen = () => {
       if (appContext.user) {
         checkPermission()
         const lots = (await parkingApi.listParkingLots()).data
-
+        const parkingActions = (await parkingActionApi.listParkingAction(20))
+          .data
+        console.log(parkingActions)
         setParkingLots(lots)
+        setParkingActions(parkingActions)
       } else {
         navigation.navigate("LogIn")
       }
@@ -128,22 +133,6 @@ const HomeScreen = () => {
       // }
     }
   }
-
-  // const park = (idx) => {
-  //   const temp = [...lotsInfo]
-  //   temp[idx].free = lotsInfo[idx].free - 1
-  //   setLotsInfo(temp)
-  //   setParkedAt(idx)
-  //   markerRefs[idx].current.hideCallout()
-  // }
-
-  // const leave = (idx) => {
-  //   const temp = [...lotsInfo]
-  //   temp[idx].free = lotsInfo[idx].free + 1
-  //   setLotsInfo(temp)
-  //   setParkedAt(null)
-  //   markerRefs[idx].current.hideCallout()
-  // }
 
   const handleNewParkingLot = (e: MapPressEvent) => {
     setNewParkingLot({
@@ -256,6 +245,7 @@ const HomeScreen = () => {
             calloutShown={calloutShown}
             parkingLots={parkingLots}
             resetParkingLots={resetParkingLots}
+            parkingActions={parkingActions}
           />
         </View>
       )}

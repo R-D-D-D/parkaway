@@ -17,7 +17,7 @@ export type DbParkingAction = {
 
 export const list = async (limit: number): Promise<DbParkingAction[]> => {
   return await syncAll<DbParkingAction>(
-    "SELECT * FROM parking_actions LIMIT ?",
+    "SELECT * FROM parking_actions ORDER BY created_at DESC LIMIT ?",
     [limit]
   )
 }

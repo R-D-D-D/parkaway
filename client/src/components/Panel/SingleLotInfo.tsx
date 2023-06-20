@@ -53,7 +53,7 @@ const SingleLotInfo = (props: IProps) => {
                     source={require("../../../assets/man.png")}
                     style={styles.avatar}
                   />
-                  <Text>Mark</Text>
+                  <Text>{parkingLot.currUsers[idx].username}</Text>
                   <Text style={styles.timeText}>Here since 16:45</Text>
                 </View>
               )

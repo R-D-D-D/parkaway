@@ -2,54 +2,50 @@ import { StyleSheet, Text, View, ScrollView } from "react-native"
 import React from "react"
 import InfoTag from "../InfoTag"
 import { Divider, ListItem } from "react-native-elements"
-import ParkingActionDisplay, { ParkingAction } from "../ParkingActionDisplay"
-const AllLotsInfo = () => {
+import ParkingActionDisplay from "../ParkingActionDisplay"
+import { ParkingAction } from "../../api/parking_action"
+import { ParkingLot } from "../../api/parking_lot"
+
+interface IProps {
+  parkingActions: ParkingAction[]
+  parkingLots: ParkingLot[]
+}
+const AllLotsInfo = (props: IProps) => {
+  const { parkingActions, parkingLots } = props
+  console.log("Parking actions: ======", parkingActions)
+  const calculateFreeLots = (): number => {
+    return parkingLots
+      .map((lot) => lot.freeLots)
+      .reduce((lot, prevLot) => lot + prevLot)
+  }
+
+  const calculateTotalLots = (): number => {
+    return parkingLots
+      .map((lot) => lot.totalLots)
+      .reduce((lot, prevLot) => lot + prevLot)
+  }
+
   return (
     <View>
       <Text style={styles.text1}>Available parking lots</Text>
-      <InfoTag text={"2 / 10"} style={styles.infoTag} />
+      <InfoTag
+        text={`${calculateFreeLots()} / ${calculateTotalLots()}`}
+        style={styles.infoTag}
+      />
       <Divider style={styles.divider} />
       <ScrollView>
-        <ListItem containerStyle={styles.parkingActionList}>
-          <ListItem.Content>
-            <ParkingActionDisplay
-              action={ParkingAction.Leave}
-              timestamp={new Date()}
-              name={"Darren"}
-              lot={1}
-            />
-          </ListItem.Content>
-        </ListItem>
-        <ListItem containerStyle={styles.parkingActionList}>
-          <ListItem.Content>
-            <ParkingActionDisplay
-              action={ParkingAction.Park}
-              timestamp={new Date()}
-              name={"Janice"}
-              lot={2}
-            />
-          </ListItem.Content>
-        </ListItem>
-        <ListItem containerStyle={styles.parkingActionList}>
-          <ListItem.Content>
-            <ParkingActionDisplay
-              action={ParkingAction.Park}
-              timestamp={new Date()}
-              name={"Janice"}
-              lot={2}
-            />
-          </ListItem.Content>
-        </ListItem>
-        <ListItem containerStyle={styles.parkingActionList}>
-          <ListItem.Content>
-            <ParkingActionDisplay
-              action={ParkingAction.Park}
-              timestamp={new Date()}
-              name={"Janice"}
-              lot={2}
-            />
-          </ListItem.Content>
-        </ListItem>
+        {parkingActions.map((action) => (
+          <ListItem containerStyle={styles.parkingActionList} key={action.id}>
+            <ListItem.Content>
+              <ParkingActionDisplay
+                isPark={action.isPark}
+                timestamp={new Date(action.createdAt * 1000)}
+                name={`${action.userId}`}
+                lot={action.parkingLotId}
+              />
+            </ListItem.Content>
+          </ListItem>
+        ))}
       </ScrollView>
     </View>
   )

@@ -15,4 +15,16 @@ export const parkingActionApi = {
     return (await request.post<ApiResponse<void>>("/parking-actions", params))
       .data
   },
+
+  listParkingAction: async (
+    limit: number
+  ): Promise<ApiResponse<ParkingAction[]>> => {
+    return (
+      await request.get<ApiResponse<ParkingAction[]>>("/parking-actions", {
+        params: {
+          limit,
+        },
+      })
+    ).data
+  },
 }
