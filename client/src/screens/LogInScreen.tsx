@@ -53,7 +53,7 @@ const LogInScreen = () => {
           if (resp.status === "success") {
             showShortToast("success")
             setUser(resp.data)
-            navigation.navigate("Home")
+            navigation.navigate("Main", { screen: "Home" })
           } else {
             showLongToast(resp.status)
           }
@@ -74,7 +74,7 @@ const LogInScreen = () => {
           if (resp.status === "success") {
             showShortToast("success")
             setUser(resp.data)
-            navigation.navigate("Home")
+            navigation.navigate("Main")
           } else {
             showLongToast(resp.status)
           }

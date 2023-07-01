@@ -5,7 +5,7 @@ import AllLotsInfo from "./AllLotsInfo"
 import SingleLotInfo from "./SingleLotInfo"
 import { ParkingLot } from "../../api/parking_lot"
 import EditParkingLots from "./EditParkingLots"
-import { ParkingAction } from "../../api/parking_action"
+import { ActionInfo, ParkingAction } from "../../api/parking_action"
 
 export enum PanelType {
   AllLotsInfo = 0,
@@ -24,7 +24,8 @@ interface IPanelProps {
   calloutShown: number | null
   parkingLots: ParkingLot[]
   resetParkingLots: () => Promise<void>
-  parkingActions: ParkingAction[]
+  parkingActions: ActionInfo[]
+  isTestMode: boolean
 }
 
 const Panel = (props: IPanelProps) => {
@@ -37,8 +38,8 @@ const Panel = (props: IPanelProps) => {
     parkingLots,
     resetParkingLots,
     parkingActions,
+    isTestMode,
   } = props
-  console.log("Parking actions in Panel: ======", parkingActions)
   const isAllLotsInfo = type === PanelType.AllLotsInfo
   return (
     <View style={styles.container}>
@@ -57,6 +58,8 @@ const Panel = (props: IPanelProps) => {
           calloutShown={calloutShown}
           parkingLots={parkingLots}
           resetParkingLots={resetParkingLots}
+          isTestMode={isTestMode}
+          parkingActions={parkingActions}
         />
       )}
     </View>

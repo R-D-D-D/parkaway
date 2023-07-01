@@ -1,4 +1,6 @@
+import { IUser } from "../context"
 import { ApiResponse, request } from "./common"
+import { ParkingLot } from "./parking_lot"
 
 export type ParkingAction = {
   id: number
@@ -7,6 +9,8 @@ export type ParkingAction = {
   parkingLotId: number
   createdAt: number
 }
+
+export type ActionInfo = ParkingAction & ParkingLot & IUser
 
 export const parkingActionApi = {
   createParkingAction: async (
@@ -18,9 +22,9 @@ export const parkingActionApi = {
 
   listParkingAction: async (
     limit: number
-  ): Promise<ApiResponse<ParkingAction[]>> => {
+  ): Promise<ApiResponse<ActionInfo[]>> => {
     return (
-      await request.get<ApiResponse<ParkingAction[]>>("/parking-actions", {
+      await request.get<ApiResponse<ActionInfo[]>>("/parking-actions", {
         params: {
           limit,
         },

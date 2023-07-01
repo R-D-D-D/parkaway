@@ -13,26 +13,29 @@ import { mapStyle } from "../global/mapStyle"
 import * as Location from "expo-location"
 import { useEffect, useRef, useState, useContext } from "react"
 import { Tooltip, Button } from "react-native-elements"
-import { getDistance } from "geolib"
 import CustomMarker from "../components/Marker"
 import Panel, { PanelType } from "../components/Panel/Panel"
-import RecenterBtn from "../components/RecenterBtn"
 import { AppContext } from "../context"
 import { useNavigation } from "@react-navigation/native"
 import { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { RootStackParamList } from "../navigation"
 import { useIsFocused } from "@react-navigation/core"
-import AdminEditBtn from "../components/AdminEditBtn"
 import { ParkingLot, parkingApi } from "../api/parking_lot"
 import { wait } from "../utils/time"
-import { ParkingAction, parkingActionApi } from "../api/parking_action"
+import {
+  ActionInfo,
+  ParkingAction,
+  parkingActionApi,
+} from "../api/parking_action"
+import FloatingMenuBtn from "../components/FloatingMenuButton"
+
 const SCREEN_WIDTH = Dimensions.get("window").width
 const LAT_DELTA = 0.005
 const LNG_DELTA = 0.0025
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
-  "Home"
+  "Main"
 >
 
 const HomeScreen = () => {
@@ -53,7 +56,8 @@ const HomeScreen = () => {
   }>(null)
   const [isAdminEditing, setIsAdminEditing] = useState(false)
   const [rerenderMarkersFlag, triggerRerenderMarkers] = useState(false)
-  const [parkingActions, setParkingActions] = useState<ParkingAction[]>([])
+  const [parkingActions, setParkingActions] = useState<ActionInfo[]>([])
+  const [isTestMode, setIsTestMode] = useState(false)
 
   const handleCenter = () => {
     const { latitude, longitude } = latLng
@@ -66,7 +70,14 @@ const HomeScreen = () => {
   }
 
   const handleEdit = () => {
+    if (isAdminEditing) {
+      setNewParkingLot(null)
+    }
     setIsAdminEditing(!isAdminEditing)
+  }
+
+  const handleTest = () => {
+    setIsTestMode(!isTestMode)
   }
 
   const randomPlusMinus = () => {
@@ -94,7 +105,7 @@ const HomeScreen = () => {
     let userParkedFlag = false
     parkingLots.forEach((lot) => {
       if (
-        lot.currUsers.findIndex((user) => user.id === appContext.user.id) >= 0
+        lot.currUsers.findIndex((user) => user.id === appContext.user?.id) >= 0
       ) {
         setParkedAt(lot.id)
         userParkedFlag = true
@@ -111,7 +122,6 @@ const HomeScreen = () => {
         const lots = (await parkingApi.listParkingLots()).data
         const parkingActions = (await parkingActionApi.listParkingAction(20))
           .data
-        console.log(parkingActions)
         setParkingLots(lots)
         setParkingActions(parkingActions)
       } else {
@@ -121,18 +131,18 @@ const HomeScreen = () => {
     init()
   }, [isFocused])
 
-  const onUserLocationChange = ({ nativeEvent }) => {
-    for (let i = 0; i < parkingLots.length; i++) {
-      const distance = getDistance(nativeEvent.coordinate, {
-        latitude: parkingLots[i].latitude,
-        longitude: parkingLots[i].longitude,
-      })
-      // if (distance < 30 && calloutShown !== i) {
-      //   markerRefs[i].current.showCallout()
-      //   setCalloutShown(i)
-      // }
-    }
-  }
+  // const onUserLocationChange = ({ nativeEvent }) => {
+  //   for (let i = 0; i < parkingLots.length; i++) {
+  //     const distance = getDistance(nativeEvent.coordinate, {
+  //       latitude: parkingLots[i].latitude,
+  //       longitude: parkingLots[i].longitude,
+  //     })
+  //     if (distance < 30 && calloutShown !== i) {
+  //       markerRefs[i].current.showCallout()
+  //       setCalloutShown(i)
+  //     }
+  //   }
+  // }
 
   const handleNewParkingLot = (e: MapPressEvent) => {
     setNewParkingLot({
@@ -143,7 +153,9 @@ const HomeScreen = () => {
 
   const resetParkingLots = async () => {
     const lots = (await parkingApi.listParkingLots()).data
+    const parkingActions = (await parkingActionApi.listParkingAction(20)).data
     setParkingLots(lots)
+    setParkingActions(parkingActions)
     triggerRerenderMarkers(!rerenderMarkersFlag)
     await wait(10)
     if (calloutShown !== null) {
@@ -156,12 +168,20 @@ const HomeScreen = () => {
     setNewParkingLot(null)
   }
 
+  const getPincolor = (lot: ParkingLot) => {
+    if (parkedAt === lot.id) {
+      return undefined
+    } else {
+      return lot.freeLots === 0 ? "red" : "green"
+    }
+  }
+
   return (
     <View style={styles.container}>
-      {latLng !== null && (
+      {latLng !== null && appContext.user && (
         <View style={{ alignItems: "center", justifyContent: "center" }}>
           <MapView
-            onUserLocationChange={onUserLocationChange}
+            // onUserLocationChange={onUserLocationChange}
             provider={PROVIDER_GOOGLE}
             style={styles.map}
             customMapStyle={mapStyle}
@@ -190,13 +210,7 @@ const HomeScreen = () => {
                   longitude: lot.longitude,
                 }}
                 key={`${lot.id}${rerenderMarkersFlag}`}
-                pinColor={
-                  parkedAt === lot.id
-                    ? undefined
-                    : lot.freeLots === 0
-                    ? "red"
-                    : "green"
-                }
+                pinColor={getPincolor(lot)}
                 ref={(el) => (markerRefs.current[idx] = el)}
                 onPress={() => setCalloutShown(idx)}
               >
@@ -218,7 +232,7 @@ const HomeScreen = () => {
                   longitude: newParkingLot.longitude,
                 }}
                 key={"new-parking-lot"}
-                pinColor={"red"}
+                pinColor={"grey"}
               >
                 {/* <Image
                     source={require("../../assets/leave-action.png")}
@@ -227,12 +241,41 @@ const HomeScreen = () => {
               </Marker>
             )}
           </MapView>
-          <RecenterBtn style={styles.recenterBtn} onPress={handleCenter} />
-          <AdminEditBtn
-            style={styles.adminEditBtn}
-            onPress={handleEdit}
-            isAdminEditing={isAdminEditing}
-          />
+          <FloatingMenuBtn style={styles.recenterBtn} onPress={handleCenter}>
+            <Image
+              source={require("../../assets/navigation.png")}
+              style={styles.floatingBtnImg}
+            />
+          </FloatingMenuBtn>
+
+          {appContext.user?.isAdmin ? (
+            <FloatingMenuBtn style={styles.adminEditBtn} onPress={handleEdit}>
+              {isAdminEditing ? (
+                <Image
+                  source={require("../../assets/close.png")}
+                  style={styles.floatingBtnImg}
+                />
+              ) : (
+                <Image
+                  source={require("../../assets/pencil.png")}
+                  style={styles.floatingBtnImg}
+                />
+              )}
+            </FloatingMenuBtn>
+          ) : null}
+          <FloatingMenuBtn style={styles.testBtn} onPress={handleTest}>
+            {isTestMode ? (
+              <Image
+                source={require("../../assets/close.png")}
+                style={styles.floatingBtnImg}
+              />
+            ) : (
+              <Image
+                source={require("../../assets/incognito.png")}
+                style={styles.floatingBtnImg}
+              />
+            )}
+          </FloatingMenuBtn>
           <Panel
             type={
               calloutShown === null
@@ -246,6 +289,7 @@ const HomeScreen = () => {
             parkingLots={parkingLots}
             resetParkingLots={resetParkingLots}
             parkingActions={parkingActions}
+            isTestMode={isTestMode}
           />
         </View>
       )}
@@ -258,7 +302,6 @@ const styles = StyleSheet.create({
   container: {
     // flex: 1,
     backgroundColor: colors.white,
-    paddingTop: parameters.statusBarHeight,
   },
   header: {
     backgroundColor: colors.blue,
@@ -272,111 +315,26 @@ const styles = StyleSheet.create({
   },
   adminEditBtn: {
     position: "absolute",
+    bottom: 460,
+    right: 20,
+  },
+  testBtn: {
+    position: "absolute",
     bottom: 390,
     right: 20,
   },
-  image1: {
-    height: 100,
-    width: 100,
-  },
-
-  image2: { height: 60, width: 60, borderRadius: 30 },
-
-  home: {
-    backgroundColor: colors.blue,
-    paddingLeft: 20,
-  },
-
-  text1: {
-    color: colors.white,
-    fontSize: 21,
-    paddingBottom: 20,
-    paddingTop: 20,
-  },
-
-  text2: {
-    color: colors.white,
-    fontSize: 16,
-  },
-
-  view1: {
-    flexDirection: "row",
-    flex: 1,
-    paddingTop: 30,
-  },
-
-  button1: {
-    height: 40,
-    width: 150,
-    backgroundColor: colors.black,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 20,
-  },
-
-  button1Text: {
-    color: colors.white,
-    fontSize: 17,
-    marginTop: -2,
+  floatingBtnImg: {
+    width: 20,
+    height: 20,
   },
   card: {
     alignItems: "center",
     margin: SCREEN_WIDTH / 22,
   },
 
-  view2: { marginBottom: 5, borderRadius: 15, backgroundColor: colors.grey6 },
-
   title: {
     color: colors.black,
     fontSize: 16,
-  },
-  view3: {
-    flexDirection: "row",
-    marginTop: 5,
-    height: 50,
-    backgroundColor: colors.grey6,
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginHorizontal: 15,
-  },
-  text3: { marginLeft: 15, fontSize: 20, color: colors.black },
-
-  view4: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginRight: 15,
-    backgroundColor: "white",
-    paddingHorizontal: 10,
-    paddingVertical: 2,
-    borderRadius: 20,
-  },
-
-  view5: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "white",
-    paddingVertical: 25,
-    justifyContent: "space-between",
-    marginHorizontal: 15,
-    borderBottomColor: colors.grey4,
-    borderBottomWidth: 1,
-    flex: 1,
-  },
-
-  view6: {
-    alignItems: "center",
-    flex: 5,
-    flexDirection: "row",
-  },
-  view7: {
-    backgroundColor: colors.grey6,
-    height: 40,
-    width: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 20,
   },
 
   map: {
@@ -385,16 +343,6 @@ const styles = StyleSheet.create({
     height: "100%",
   },
 
-  text4: {
-    fontSize: 20,
-    color: colors.black,
-    marginLeft: 20,
-    marginBottom: 20,
-  },
-
-  icon1: { marginLeft: 10, marginTop: 5 },
-
-  view8: { flex: 4, marginTop: -25 },
   parkingImg: {
     width: 68,
     height: 32,
@@ -408,6 +356,4 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-
-  view9: { width: 4, height: 4, borderRadius: 2, backgroundColor: "white" },
 })

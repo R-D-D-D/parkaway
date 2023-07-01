@@ -1,5 +1,8 @@
 import { syncAll, syncGet, syncRun } from "../db"
+import { objToCamelKey } from "../utils/case"
 import { getUnixTime } from "../utils/date"
+import { ParkingLot } from "./parking_lot"
+import { DbUser, User } from "./user"
 
 export type ParkingAction = {
   isPark: boolean
@@ -15,9 +18,17 @@ export type DbParkingAction = {
   created_at: number
 }
 
-export const list = async (limit: number): Promise<DbParkingAction[]> => {
-  return await syncAll<DbParkingAction>(
-    "SELECT * FROM parking_actions ORDER BY created_at DESC LIMIT ?",
+export const list = async (
+  limit: number
+): Promise<(DbParkingAction & User & ParkingLot)[]> => {
+  return await syncAll<DbParkingAction & User & ParkingLot>(
+    `SELECT pa.id, pa.is_park, pa.user_id, pa.parking_lot_id, pa.created_at, u.email, u.username, pl.lot_name, pl.office_name
+      FROM parking_actions pa 
+      LEFT JOIN users u 
+      ON pa.user_id = u.id 
+      LEFT JOIN parking_lots pl 
+      ON pa.parking_lot_id = pl.id
+      ORDER BY pa.created_at DESC LIMIT ?`,
     [limit]
   )
 }

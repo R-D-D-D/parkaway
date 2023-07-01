@@ -3,32 +3,35 @@ import React from "react"
 import { Image } from "react-native-elements"
 import { formatDate } from "../utils/date"
 import { colors } from "../global/styles"
+import { ActionInfo } from "../api/parking_action"
 
 interface IProps {
-  name: string
-  timestamp: Date
-  isPark: boolean
-  lot: number
+  action: ActionInfo
 }
 
 const ParkingActionDisplay = (props: IProps) => {
-  const { name, timestamp, isPark, lot } = props
+  const {
+    action: { isPark, createdAt, username, lotName, officeName },
+  } = props
   return (
     <View style={styles.container}>
       {isPark ? (
         <Image
-          source={require("../../assets/park-action.png")}
+          source={require("../../assets/leave-action.png")}
           style={styles.parkingImg}
         />
       ) : (
         <Image
-          source={require("../../assets/leave-action.png")}
+          source={require("../../assets/park-action.png")}
           style={styles.parkingImg}
         />
       )}
-      <Text style={styles.text}>{formatDate(timestamp, "MM-dd HH:mm")}</Text>
       <Text style={styles.text}>
-        {name} {isPark ? "parked at" : "left"} lot {lot}
+        {formatDate(new Date(createdAt * 1000), "HH:mm")}
+      </Text>
+      <Text style={styles.text}>
+        {username} {isPark ? "parked at" : "left"} {officeName} office, lot{" "}
+        {lotName}
       </Text>
     </View>
   )

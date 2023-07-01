@@ -5,6 +5,7 @@ export interface IUser {
   email: string
   userPassword: string
   createdAt: string
+  isAdmin: boolean
   id: number
 }
 

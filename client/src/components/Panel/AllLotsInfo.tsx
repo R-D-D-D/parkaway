@@ -3,26 +3,26 @@ import React from "react"
 import InfoTag from "../InfoTag"
 import { Divider, ListItem } from "react-native-elements"
 import ParkingActionDisplay from "../ParkingActionDisplay"
-import { ParkingAction } from "../../api/parking_action"
+import { ActionInfo, ParkingAction } from "../../api/parking_action"
 import { ParkingLot } from "../../api/parking_lot"
 
 interface IProps {
-  parkingActions: ParkingAction[]
+  parkingActions: ActionInfo[]
   parkingLots: ParkingLot[]
 }
+
 const AllLotsInfo = (props: IProps) => {
   const { parkingActions, parkingLots } = props
-  console.log("Parking actions: ======", parkingActions)
   const calculateFreeLots = (): number => {
     return parkingLots
       .map((lot) => lot.freeLots)
-      .reduce((lot, prevLot) => lot + prevLot)
+      .reduce((lot, prevLot) => lot + prevLot, 0)
   }
 
   const calculateTotalLots = (): number => {
     return parkingLots
       .map((lot) => lot.totalLots)
-      .reduce((lot, prevLot) => lot + prevLot)
+      .reduce((lot, prevLot) => lot + prevLot, 0)
   }
 
   return (
@@ -37,12 +37,7 @@ const AllLotsInfo = (props: IProps) => {
         {parkingActions.map((action) => (
           <ListItem containerStyle={styles.parkingActionList} key={action.id}>
             <ListItem.Content>
-              <ParkingActionDisplay
-                isPark={action.isPark}
-                timestamp={new Date(action.createdAt * 1000)}
-                name={`${action.userId}`}
-                lot={action.parkingLotId}
-              />
+              <ParkingActionDisplay action={action} />
             </ListItem.Content>
           </ListItem>
         ))}

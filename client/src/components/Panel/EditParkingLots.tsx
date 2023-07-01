@@ -43,33 +43,36 @@ const EditParkingLots = (props: IProps) => {
   return (
     <View>
       <Text style={styles.text1}>Create a parking lot</Text>
-      <Input
-        placeholder="Office Name"
-        onChangeText={(officeName) =>
-          setParkingLotForm({ ...parkingLotForm, officeName })
-        }
-        autoCapitalize="none"
-        value={parkingLotForm?.officeName ?? ""}
-      />
-      <Input
-        placeholder="Lot Name"
-        onChangeText={(lotName) =>
-          setParkingLotForm({ ...parkingLotForm, lotName })
-        }
-        autoCapitalize="none"
-        value={parkingLotForm?.lotName ?? ""}
-      />
-      <Input
-        placeholder="Total Lot"
-        onChangeText={(totalLots) => {
-          setParkingLotForm({
-            ...parkingLotForm,
-            totalLots: totalLots.length > 0 ? parseInt(totalLots) : 0,
-          })
-        }}
-        autoCapitalize="none"
-        value={String(parkingLotForm?.totalLots ?? "")}
-      />
+      <View style={styles.input}>
+        <Input
+          placeholder="Office Name"
+          onChangeText={(officeName) =>
+            setParkingLotForm({ ...parkingLotForm, officeName })
+          }
+          autoCapitalize="none"
+          value={parkingLotForm?.officeName ?? ""}
+        />
+        <Input
+          placeholder="Lot Name"
+          onChangeText={(lotName) =>
+            setParkingLotForm({ ...parkingLotForm, lotName })
+          }
+          autoCapitalize="none"
+          value={parkingLotForm?.lotName ?? ""}
+        />
+        <Input
+          placeholder="Total Lot"
+          onChangeText={(totalLots) => {
+            setParkingLotForm({
+              ...parkingLotForm,
+              totalLots: totalLots.length > 0 ? parseInt(totalLots) : 0,
+            })
+          }}
+          autoCapitalize="none"
+          value={String(parkingLotForm?.totalLots ?? "")}
+          keyboardType="numeric"
+        />
+      </View>
       <Button
         title="Create Parking Lot"
         buttonStyle={{ backgroundColor: colors.red }}
@@ -91,5 +94,9 @@ const styles = StyleSheet.create({
     fontSize: 21,
     paddingLeft: 20,
     paddingTop: 20,
+  },
+  input: {
+    paddingHorizontal: 10,
+    paddingTop: 6,
   },
 })

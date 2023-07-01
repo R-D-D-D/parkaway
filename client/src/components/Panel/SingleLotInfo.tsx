@@ -1,39 +1,104 @@
 import { StyleSheet, Text, View } from "react-native"
-import React, { useContext } from "react"
+import React, { useCallback, useContext } from "react"
 import { Image, Button } from "react-native-elements"
 import { colors } from "../../global/styles"
 import { ParkingLot } from "../../api/parking_lot"
 import { AppContext } from "../../context"
-import { parkingActionApi } from "../../api/parking_action"
+import { ActionInfo, parkingActionApi } from "../../api/parking_action"
+import { getDistance } from "geolib"
+import * as Location from "expo-location"
+import { showLongToast } from "../../utils/toast"
+import { formatDate } from "../../utils/date"
 
 interface IProps {
   calloutShown: number | null
   parkingLots: ParkingLot[]
   resetParkingLots: () => Promise<void>
+  isTestMode: boolean
+  parkingActions: ActionInfo[]
 }
 const SingleLotInfo = (props: IProps) => {
   // console.log("[SingleLotInfo] props:", props)
-  const { calloutShown, parkingLots, resetParkingLots } = props
+  const {
+    calloutShown,
+    parkingLots,
+    resetParkingLots,
+    isTestMode,
+    parkingActions,
+  } = props
   const { user } = useContext(AppContext)
 
   const parkingLot = parkingLots[calloutShown]
+  const lotParkingActions = parkingActions.filter(
+    (action) => action.parkingLotId === parkingLot.id
+  )
   const isUserParkingHere =
     parkingLot?.currUsers.find((u) => u.id === user.id) !== undefined
+  const isUserParked =
+    parkingLots.find((lot) =>
+      lot.currUsers.map((u) => u.id).includes(user?.id)
+    ) !== undefined
 
   const handlePark = async () => {
-    await parkingActionApi.createParkingAction({
-      userId: user.id,
-      parkingLotId: parkingLot.id,
-      isPark: !isUserParkingHere,
-    })
-    await resetParkingLots()
+    if (user) {
+      if (!isTestMode && !isUserParkingHere) {
+        const {
+          coords: { latitude, longitude },
+        } = await Location.getCurrentPositionAsync({})
+
+        const distance = getDistance(
+          { latitude, longitude },
+          {
+            latitude: parkingLot.latitude,
+            longitude: parkingLot.longitude,
+          }
+        )
+        console.log(distance)
+        if (distance > 20) {
+          showLongToast("You seem too far from the parking lot")
+          return
+        }
+      }
+      await parkingActionApi.createParkingAction({
+        userId: user.id,
+        parkingLotId: parkingLot.id,
+        isPark: !isUserParkingHere,
+      })
+      await resetParkingLots()
+    }
   }
+
+  const getBtnConfig = useCallback(() => {
+    if (isUserParkingHere) {
+      return {
+        text: "Leave",
+        disabled: false,
+      }
+    } else if (parkingLot.freeLots === 0) {
+      return {
+        text: "Unavailable",
+        disabled: true,
+      }
+    } else if (isUserParked) {
+      return {
+        text: "Park",
+        disabled: true,
+      }
+    } else {
+      return {
+        text: "Park",
+        disabled: false,
+      }
+    }
+  }, [parkingLots, calloutShown, user])
 
   return (
     <>
       {parkingLot && (
         <View style={styles.container}>
-          <Text style={styles.text1}>Lot 1</Text>
+          <Text style={styles.text1}>
+            {parkingLot.officeName} Lot {parkingLot.lotName}
+          </Text>
 
           <View style={styles.avatarRowContainer}>
             {[...Array(parkingLot.freeLots).keys()].map((idx) => (
@@ -54,19 +119,24 @@ const SingleLotInfo = (props: IProps) => {
                     style={styles.avatar}
                   />
                   <Text>{parkingLot.currUsers[idx].username}</Text>
-                  <Text style={styles.timeText}>Here since 16:45</Text>
+                  <Text style={styles.timeText}>
+                    Here since{"\n"}
+                    {formatDate(
+                      new Date(
+                        lotParkingActions.find(
+                          (action) =>
+                            action.userId === parkingLot.currUsers[idx].id
+                        ).createdAt * 1000
+                      ),
+                      "MM/dd HH:mm"
+                    )}
+                  </Text>
                 </View>
               )
             )}
           </View>
           <Button
-            title={
-              isUserParkingHere
-                ? "Leave"
-                : parkingLot.freeLots === 0
-                ? "Unavailable"
-                : "Park"
-            }
+            title={getBtnConfig().text}
             buttonStyle={{
               backgroundColor:
                 parkingLot.freeLots === 0 && !isUserParkingHere
@@ -79,6 +149,7 @@ const SingleLotInfo = (props: IProps) => {
             }}
             titleStyle={{ color: "white", marginHorizontal: 20 }}
             onPress={() => handlePark()}
+            disabled={getBtnConfig().disabled}
           />
         </View>
       )}
@@ -104,8 +175,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   timeText: {
-    fontSize: 12,
+    fontSize: 14,
     color: colors.grey4,
+    textAlign: "center",
   },
   avatar: {
     width: 80,

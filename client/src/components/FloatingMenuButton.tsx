@@ -1,26 +1,23 @@
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native"
 import React from "react"
-import { Image } from "react-native-elements"
 import { ViewStyle } from "react-native"
 import { colors } from "../global/styles"
 
 interface IProps {
   style: ViewStyle
   onPress: () => void
+  children: JSX.Element
 }
-const RecenterBtn = (props: IProps) => {
-  const { style, onPress } = props
+const FloatingMenuBtn = (props: IProps) => {
+  const { style, onPress, children } = props
   return (
     <TouchableOpacity style={[styles.container, style]} onPress={onPress}>
-      <Image
-        source={require("../../assets/navigation.png")}
-        style={styles.img}
-      />
+      {children}
     </TouchableOpacity>
   )
 }
 
-export default RecenterBtn
+export default FloatingMenuBtn
 
 const styles = StyleSheet.create({
   container: {
