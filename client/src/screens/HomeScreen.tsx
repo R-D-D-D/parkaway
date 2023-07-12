@@ -1,6 +1,11 @@
 import { StatusBar } from "expo-status-bar"
 import { StyleSheet, Text, View, Dimensions, Image } from "react-native"
-import { colors, parameters } from "../global/styles"
+import {
+  colors,
+  parameters,
+  SCREEN_WIDTH,
+  SCREEN_HEIGHT,
+} from "../global/styles"
 import MapView, {
   PROVIDER_GOOGLE,
   Marker,
@@ -28,8 +33,8 @@ import {
   parkingActionApi,
 } from "../api/parking_action"
 import FloatingMenuBtn from "../components/FloatingMenuButton"
+import { showLongToast, showShortToast } from "../utils/toast"
 
-const SCREEN_WIDTH = Dimensions.get("window").width
 const LAT_DELTA = 0.005
 const LNG_DELTA = 0.0025
 
@@ -38,7 +43,7 @@ type HomeScreenNavigationProp = NativeStackNavigationProp<
   "Main"
 >
 
-const HomeScreen = () => {
+const HomeScreen = ({ navigation }) => {
   const [map, setMap] = useState(null)
   // coordinate of the current user
   const [latLng, setLatLng] = useState(null)
@@ -47,7 +52,7 @@ const HomeScreen = () => {
   const [calloutShown, setCalloutShown] = useState<number>(null)
   const [parkedAt, setParkedAt] = useState(null)
   const appContext = useContext(AppContext)
-  const navigation = useNavigation<HomeScreenNavigationProp>()
+  // const navigation = useNavigation<HomeScreenNavigationProp>()
   const isFocused = useIsFocused()
   const [parkingLots, setParkingLots] = useState<ParkingLot[]>([])
   const [newParkingLot, setNewParkingLot] = useState<{
@@ -163,9 +168,14 @@ const HomeScreen = () => {
     }
   }
   const handleCreateParkingLot = async (parkingLot: Omit<ParkingLot, "id">) => {
-    await parkingApi.createParkingLot(parkingLot)
-    await resetParkingLots()
-    setNewParkingLot(null)
+    try {
+      await parkingApi.createParkingLot(parkingLot)
+      await resetParkingLots()
+      setNewParkingLot(null)
+      showShortToast("Success!")
+    } catch (e) {
+      showLongToast(e)
+    }
   }
 
   const getPincolor = (lot: ParkingLot) => {
@@ -310,22 +320,23 @@ const styles = StyleSheet.create({
   },
   recenterBtn: {
     position: "absolute",
-    bottom: 320,
-    right: 20,
-  },
-  adminEditBtn: {
-    position: "absolute",
-    bottom: 460,
-    right: 20,
+    bottom: SCREEN_HEIGHT * 0.37,
+    right: SCREEN_WIDTH * 0.05,
   },
   testBtn: {
     position: "absolute",
-    bottom: 390,
-    right: 20,
+    bottom: SCREEN_HEIGHT * 0.45,
+    right: SCREEN_WIDTH * 0.05,
   },
+  adminEditBtn: {
+    position: "absolute",
+    bottom: SCREEN_HEIGHT * 0.53,
+    right: SCREEN_WIDTH * 0.05,
+  },
+
   floatingBtnImg: {
-    width: 20,
-    height: 20,
+    width: SCREEN_HEIGHT * 0.03,
+    height: SCREEN_HEIGHT * 0.03,
   },
   card: {
     alignItems: "center",

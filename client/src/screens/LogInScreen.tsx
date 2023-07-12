@@ -81,6 +81,8 @@ const LogInScreen = () => {
         } catch (e) {
           showLongToast(e.message)
         }
+      } else {
+        showLongToast("You have missing fields")
       }
     }
   }

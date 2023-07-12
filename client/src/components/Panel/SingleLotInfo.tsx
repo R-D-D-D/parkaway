@@ -53,18 +53,21 @@ const SingleLotInfo = (props: IProps) => {
             longitude: parkingLot.longitude,
           }
         )
-        console.log(distance)
         if (distance > 20) {
           showLongToast("You seem too far from the parking lot")
           return
         }
       }
-      await parkingActionApi.createParkingAction({
-        userId: user.id,
-        parkingLotId: parkingLot.id,
-        isPark: !isUserParkingHere,
-      })
-      await resetParkingLots()
+      try {
+        await parkingActionApi.createParkingAction({
+          userId: user.id,
+          parkingLotId: parkingLot.id,
+          isPark: !isUserParkingHere,
+        })
+        await resetParkingLots()
+      } catch (e) {
+        console.log(e)
+      }
     }
   }
 
@@ -91,6 +94,18 @@ const SingleLotInfo = (props: IProps) => {
       }
     }
   }, [parkingLots, calloutShown, user])
+
+  const getFormattedTime = (idx: number) => {
+    const parkingAction = lotParkingActions.find(
+      (action) => action.userId === parkingLot.currUsers[idx].id
+    )
+    if (parkingAction) {
+      const date = new Date(parkingAction.createdAt * 1000)
+      return formatDate(date, "MM/dd HH:mm")
+    } else {
+      return null
+    }
+  }
 
   return (
     <>
@@ -121,15 +136,7 @@ const SingleLotInfo = (props: IProps) => {
                   <Text>{parkingLot.currUsers[idx].username}</Text>
                   <Text style={styles.timeText}>
                     Here since{"\n"}
-                    {formatDate(
-                      new Date(
-                        lotParkingActions.find(
-                          (action) =>
-                            action.userId === parkingLot.currUsers[idx].id
-                        ).createdAt * 1000
-                      ),
-                      "MM/dd HH:mm"
-                    )}
+                    {getFormattedTime(idx)}
                   </Text>
                 </View>
               )

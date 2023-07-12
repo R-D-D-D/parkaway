@@ -1,7 +1,8 @@
 {
   "expo": {
-    "name": "uber-clone",
-    "slug": "uber-clone",
+    "name": "parkaway",
+    "slug": "parkaway",
+    "owner": "devin-rd",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

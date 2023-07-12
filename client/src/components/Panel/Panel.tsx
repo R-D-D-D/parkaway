@@ -1,6 +1,6 @@
 import { Text, StyleSheet, View } from "react-native"
 import React, { Component } from "react"
-import { colors, parameters } from "../../global/styles"
+import { colors, SCREEN_WIDTH, SCREEN_HEIGHT } from "../../global/styles"
 import AllLotsInfo from "./AllLotsInfo"
 import SingleLotInfo from "./SingleLotInfo"
 import { ParkingLot } from "../../api/parking_lot"
@@ -16,7 +16,7 @@ export enum PanelType {
 interface IPanelProps {
   type: PanelType
   isAdminEditing: boolean
-  handleCreateParkingLot: (lot: Omit<ParkingLot, "id">) => void
+  handleCreateParkingLot: (lot: Omit<ParkingLot, "id">) => Promise<void>
   newParkingLot: {
     longitude: number
     latitude: number
@@ -69,7 +69,7 @@ const Panel = (props: IPanelProps) => {
 const styles = StyleSheet.create({
   container: {
     width: "100%",
-    height: 300,
+    height: SCREEN_HEIGHT * 0.35,
     backgroundColor: colors.white,
     position: "absolute",
     bottom: 0,
