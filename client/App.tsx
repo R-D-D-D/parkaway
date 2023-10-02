@@ -5,7 +5,7 @@ import HomeScreen from "./src/screens/HomeScreen"
 import * as SplashScreen from "expo-splash-screen"
 import * as Font from "expo-font"
 import { useCallback, useEffect, useState } from "react"
-import { AppContext, IUser } from "./src/context"
+import { AppContext, IUser, AppContextProvider } from "./src/context"
 import { RootStack } from "./src/navigation"
 import { RootSiblingParent } from "react-native-root-siblings"
 
@@ -14,7 +14,6 @@ SplashScreen.preventAutoHideAsync()
 
 const App = () => {
   const [appIsReady, setAppIsReady] = useState(false)
-  const [user, setUser] = useState<IUser>(null)
 
   useEffect(() => {
     async function prepare() {
@@ -51,11 +50,11 @@ const App = () => {
 
   return (
     <RootSiblingParent>
-      <AppContext.Provider value={{ user, setUser }}>
+      <AppContextProvider >
         <View style={styles.container} onLayout={onLayoutRootView}>
           <RootStack />
         </View>
-      </AppContext.Provider>
+      </AppContextProvider>
     </RootSiblingParent>
   )
 }

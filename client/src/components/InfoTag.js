@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from "react-native"
 import React from "react"
-import { colors, parameters } from "../global/styles"
+import { SCREEN_HEIGHT, colors, parameters } from "../global/styles"
 
 const InfoTag = (props) => {
   const { text, style } = props
@@ -21,7 +21,7 @@ const styles = StyleSheet.create({
     borderRadius: 5,
   },
   infoText: {
-    fontSize: 30,
+    fontSize: SCREEN_HEIGHT < 700 ? 24 : 30,
     padding: 5,
     alignSelf: "center",
   },

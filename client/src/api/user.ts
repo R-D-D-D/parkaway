@@ -10,4 +10,8 @@ export const userApi = {
   signinUser: async (params: SigninInfo): Promise<ApiResponse<IUser>> => {
     return (await request.post<ApiResponse<IUser>>("/signin", params)).data
   },
+
+  getUser: async (userId: number): Promise<ApiResponse<IUser>> => {
+    return (await request.get<ApiResponse<IUser>>(`/user/${userId}`)).data
+  },
 }

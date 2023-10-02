@@ -5,6 +5,7 @@ import { Divider, ListItem } from "react-native-elements"
 import ParkingActionDisplay from "../ParkingActionDisplay"
 import { ActionInfo, ParkingAction } from "../../api/parking_action"
 import { ParkingLot } from "../../api/parking_lot"
+import { SCREEN_HEIGHT } from "../../global/styles"
 
 interface IProps {
   parkingActions: ActionInfo[]
@@ -50,7 +51,7 @@ export default AllLotsInfo
 
 const styles = StyleSheet.create({
   text1: {
-    fontSize: 21,
+    fontSize: SCREEN_HEIGHT < 700 ? 18 : 21,
     paddingLeft: 20,
     paddingTop: 20,
   },

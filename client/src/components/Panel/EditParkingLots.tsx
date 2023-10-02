@@ -75,6 +75,10 @@ const EditParkingLots = (props: IProps) => {
           <Input
             placeholder="Total Lot"
             onChangeText={(totalLots) => {
+              if (parseInt(totalLots) > 6) {
+                showShortToast("Maximum number of lot is 6")
+                return
+              }
               setParkingLotForm({
                 ...parkingLotForm,
                 totalLots: totalLots.length > 0 ? parseInt(totalLots) : 0,

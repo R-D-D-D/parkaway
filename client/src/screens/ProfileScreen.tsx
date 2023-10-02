@@ -2,7 +2,7 @@ import { ScrollView, StyleSheet, Text, View } from "react-native"
 import React, { useContext, useEffect, useState } from "react"
 import { Button, Image } from "react-native-elements"
 import { AppContext } from "../context"
-import { SCREEN_WIDTH, colors } from "../global/styles"
+import { SCREEN_HEIGHT, SCREEN_WIDTH, colors, title } from "../global/styles"
 import { RootStackParamList } from "../navigation"
 import { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { useNavigation } from "@react-navigation/native"
@@ -17,38 +17,33 @@ type HomeScreenNavigationProp = NativeStackNavigationProp<
 >
 
 const ProfileScreen = () => {
-  const { user, setUser } = useContext(AppContext)
+  const { user, setUser, parkingActions } = useContext(AppContext)
   const navigation = useNavigation<HomeScreenNavigationProp>()
-  const [parkingActions, setParkingActions] = useState<ActionInfo[][]>([])
+  const [filteredParkingActions, setFilteredParkingActions] = useState<
+    ActionInfo[][]
+  >([])
 
   useEffect(() => {
-    const init = async () => {
+    const refreshDisplay = async () => {
       if (user) {
-        const parkingActions = (
-          await parkingActionApi.listParkingAction(99999999)
-        ).data.filter((x) => x.userId === user.id)
-        if (parkingActions.length > 0) {
+        const userParkingActions = parkingActions.filter(
+          (x) => x.userId === user.id
+        )
+        if (userParkingActions.length > 0) {
           const result: ActionInfo[][] = []
-          if (parkingActions[0].isPark) {
-            result.push([parkingActions.shift()!])
+          if (userParkingActions[0].isPark) {
+            result.push([userParkingActions.shift()!])
           }
-          for (let i = 0; i < parkingActions.length; i += 2) {
-            result.push([parkingActions[i], parkingActions[i + 1]])
+          for (let i = 0; i < userParkingActions.length; i += 2) {
+            result.push([userParkingActions[i], userParkingActions[i + 1]])
           }
-          setParkingActions(result)
+          setFilteredParkingActions(result)
         }
       }
     }
 
-    const unsubscribe = navigation.addListener("focus", () => {
-      // The screen is focused
-      // Call any action
-      init()
-    })
-
-    // Return the function to unsubscribe from the event so it gets removed on unmount
-    return unsubscribe
-  }, [navigation])
+    refreshDisplay()
+  }, [parkingActions])
 
   return (
     <View style={styles.container}>
@@ -61,16 +56,23 @@ const ProfileScreen = () => {
             />
             <Text style={styles.username}>{user.username}</Text>
           </View>
-          <ScrollView style={{ padding: 30 }}>
-            {parkingActions.length > 0 &&
-              parkingActions.map((actions: ActionInfo[]) => {
+          <Text style={styles.subtitle}>Your latest parkings</Text>
+          <ScrollView style={{ paddingHorizontal: 30 }}>
+            {filteredParkingActions.length > 0 &&
+              filteredParkingActions.map((actions: ActionInfo[]) => {
                 if (actions.length === 1) {
-                  return <ParkingDurationDisplay parkingAction={actions[0]} />
+                  return (
+                    <ParkingDurationDisplay
+                      parkingAction={actions[0]}
+                      key={actions[0].id}
+                    />
+                  )
                 } else if (actions.length === 2) {
                   return (
                     <ParkingDurationDisplay
                       parkingAction={actions[1]}
                       leavingAction={actions[0]}
+                      key={actions[0].id}
                     />
                   )
                 } else {
@@ -104,7 +106,8 @@ const styles = StyleSheet.create({
   },
   basicInfo: {
     alignItems: "center",
-    marginTop: 120,
+    marginTop: SCREEN_HEIGHT * 0.1,
+    marginBottom: SCREEN_HEIGHT * 0.03,
   },
   profileImg: {
     width: 100,
@@ -122,5 +125,13 @@ const styles = StyleSheet.create({
     width: 300,
     marginVertical: 8,
     // height: 100,
+  },
+  subtitle: {
+    fontWeight: "bold",
+    fontSize: 14,
+    color: colors.grey2,
+    alignSelf: "flex-start",
+    paddingLeft: 30,
+    marginBottom: 10,
   },
 })

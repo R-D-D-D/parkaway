@@ -7,19 +7,32 @@ import ProfileScreen from "./screens/ProfileScreen"
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs"
 import { Image } from "react-native-elements"
 import { StyleSheet } from "react-native"
+import ChatScreen, { Chatroom } from "./screens/ChatScreen"
+import { IUser } from "./context"
+import ChatListScreen from "./screens/ChatListScreen"
 
 export type RootStackParamList = {
   LogIn: undefined
   Main: { screen: string }
 }
 
+export type ChatStackParamList = {
+  Chat: {
+    otherUserId: string
+    chatroom?: Chatroom
+  }
+  ChatList: undefined
+}
+
 export type RootTabParamList = {
   Profile: undefined
   Home: undefined
+  ChatStack: undefined
 }
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
 const Tab = createBottomTabNavigator()
+const ChatStack = createNativeStackNavigator<ChatStackParamList>()
 
 export const MainTab = () => {
   return (
@@ -39,6 +52,24 @@ export const MainTab = () => {
                 focused
                   ? require("../assets/home.png")
                   : require("../assets/home-grey.png")
+              }
+            />
+          ),
+          tabBarShowLabel: false,
+        }}
+      />
+      <Tab.Screen
+        name="ChatStack"
+        component={ChatStackNavigator}
+        options={{
+          headerShown: false,
+          tabBarIcon: ({ focused }) => (
+            <Image
+              style={styles.iconImg}
+              source={
+                focused
+                  ? require("../assets/chat.png")
+                  : require("../assets/chat-grey.png")
               }
             />
           ),
@@ -76,6 +107,7 @@ export const RootStack = () => {
           component={MainTab}
           options={{ headerShown: false }}
         />
+
         <Stack.Screen
           name="LogIn"
           component={LogInScreen}
@@ -83,6 +115,15 @@ export const RootStack = () => {
         />
       </Stack.Navigator>
     </NavigationContainer>
+  )
+}
+
+export const ChatStackNavigator = () => {
+  return (
+    <ChatStack.Navigator initialRouteName="ChatList">
+      <ChatStack.Screen name="Chat" component={ChatScreen} />
+      <ChatStack.Screen name="ChatList" component={ChatListScreen} />
+    </ChatStack.Navigator>
   )
 }
 

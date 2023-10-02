@@ -1,5 +1,5 @@
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native"
-import React, { useContext, useEffect, useState } from "react"
+import React, { useContext, useEffect, useRef, useState } from "react"
 import { Button, Input } from "react-native-elements"
 import { colors } from "../global/styles"
 import { userApi } from "../api/user"
@@ -9,6 +9,20 @@ import { showLongToast, showShortToast } from "../utils/toast"
 import { useNavigation } from "@react-navigation/native"
 import { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { RootStackParamList } from "../navigation"
+import { auth, db } from "../firebase"
+import {
+  createUserWithEmailAndPassword,
+  updateProfile,
+  signInWithEmailAndPassword,
+} from "firebase/auth"
+import {
+  collection,
+  addDoc,
+  getDocs,
+  setDoc,
+  doc,
+  updateDoc,
+} from "firebase/firestore"
 
 enum PageState {
   SIGNIN = 0,
@@ -34,19 +48,81 @@ type LogInScreenNavigationProp = NativeStackNavigationProp<
 
 const LogInScreen = () => {
   const [pageState, setPageState] = useState<PageState>(PageState.SIGNIN)
-  const [signinInfo, setSigninInfo] = useState<SigninInfo>(null)
-  const [signupInfo, setSignupInfo] = useState<SignupInfo>(null)
+  const [signinInfo, setSigninInfo] = useState<SigninInfo>({})
+  const [signupInfo, setSignupInfo] = useState<SignupInfo>({})
+  const [formError, setFormError] = useState<{
+    email?: string
+    password?: string
+  }>({})
+  let timeout: any
   const { setUser } = useContext(AppContext)
   const navigation = useNavigation<LogInScreenNavigationProp>()
+  const isValidEmail = (email: string): boolean => {
+    return (
+      String(email)
+        .toLowerCase()
+        .match(
+          /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|.(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+        ) !== null
+    )
+  }
+
+  // useEffect(() => {
+  //   clearTimeout(timeout)
+  //   timeout = setTimeout(() => isValidForm())
+  // }, [signinInfo, signupInfo])
+
+  const isValidForm = () => {
+    if (pageState === PageState.SIGNIN) {
+      if (!(signinInfo.email && isValidEmail(signinInfo.email))) {
+        setFormError({
+          ...formError,
+          email: "Please enter a valid email",
+        })
+        return false
+      }
+      if (!(signinInfo.userPassword && signinInfo.userPassword.length > 5)) {
+        setFormError({
+          ...formError,
+          password: "Password must be at least 6 characters long",
+        })
+        return false
+      }
+    } else {
+      if (!(signupInfo.email && isValidEmail(signupInfo.email))) {
+        setFormError({
+          ...formError,
+          email: "Please enter a valid email",
+        })
+        return false
+      }
+      if (!(signupInfo.userPassword && signupInfo.userPassword.length > 5)) {
+        setFormError({
+          ...formError,
+          password: "Password must be at least 6 characters long",
+        })
+        return false
+      }
+      if (signupInfo.confirmUserPassword !== signupInfo.userPassword) {
+        setFormError({
+          ...formError,
+          password: "The passwords are not the same",
+        })
+        return false
+      }
+    }
+    setFormError({})
+    return true
+  }
 
   useEffect(() => {
-    setSigninInfo(null)
-    setSignupInfo(null)
+    setSigninInfo({})
+    setSignupInfo({})
   }, [pageState])
 
   const submit = async () => {
     if (pageState === PageState.SIGNIN) {
-      if (signinInfo.email && signinInfo.userPassword) {
+      if (signinInfo?.email && signinInfo?.userPassword) {
         try {
           const resp = await userApi.signinUser(signinInfo)
           // console.log("[LoginScreen: signin user call]", resp)
@@ -58,15 +134,16 @@ const LogInScreen = () => {
             showLongToast(resp.status)
           }
         } catch (e) {
-          showLongToast(e.message)
+          console.log(e)
+          showLongToast((e as Error).message)
         }
       }
     } else {
       if (
-        signupInfo.email &&
-        signupInfo.userPassword &&
-        signupInfo.username &&
-        signupInfo.confirmUserPassword === signupInfo.userPassword
+        signupInfo?.email &&
+        signupInfo?.userPassword &&
+        signupInfo?.username &&
+        signupInfo?.confirmUserPassword === signupInfo.userPassword
       ) {
         try {
           const resp = await userApi.createUser(signupInfo)
@@ -74,18 +151,59 @@ const LogInScreen = () => {
           if (resp.status === "success") {
             showShortToast("success")
             setUser(resp.data)
-            navigation.navigate("Main")
+            navigation.navigate("Main", { screen: "Home" })
           } else {
             showLongToast(resp.status)
           }
         } catch (e) {
-          showLongToast(e.message)
+          showLongToast((e as Error).message)
         }
       } else {
         showLongToast("You have missing fields")
       }
     }
   }
+
+  // const submit = async () => {
+  //   if (pageState === PageState.SIGNIN) {
+  //     if (signinInfo?.email && signinInfo?.userPassword) {
+  //       signInWithEmailAndPassword(
+  //         auth,
+  //         signinInfo.email,
+  //         signinInfo.userPassword
+  //       ).then(() => {
+  //         navigation.navigate("Main", { screen: "Home" })
+  //       })
+  //     }
+  //   } else {
+  //     if (
+  //       signupInfo?.email &&
+  //       signupInfo?.userPassword &&
+  //       signupInfo?.username &&
+  //       signupInfo?.confirmUserPassword === signupInfo.userPassword
+  //     ) {
+  //       createUserWithEmailAndPassword(
+  //         auth,
+  //         signupInfo.email,
+  //         signupInfo.userPassword
+  //       ).then((userCredential) => {
+  //         const user = userCredential.user
+  //         setDoc(doc(db, "users", user.uid), {
+  //           uid: user.uid,
+  //           email: signupInfo.email,
+  //           name: signupInfo.username,
+  //           req: [],
+  //           realFriend: [],
+  //         })
+  //         updateProfile(user, {
+  //           displayName: signupInfo.username,
+  //           // photoURL: avatar ? avatar : 'https://robohash.org/default',
+  //         })
+  //         navigation.navigate("Main", { screen: "Home" })
+  //       })
+  //     }
+  //   }
+  // }
 
   return (
     <View style={styles.container}>
@@ -137,6 +255,8 @@ const LogInScreen = () => {
             onChangeText={(email) => setSignupInfo({ ...signupInfo, email })}
             autoCapitalize="none"
             value={signupInfo?.email ?? ""}
+            errorStyle={{ color: "red" }}
+            errorMessage={formError.email}
           />
           <Input
             placeholder="Password"
@@ -145,6 +265,8 @@ const LogInScreen = () => {
             }
             autoCapitalize="none"
             value={signupInfo?.userPassword ?? ""}
+            errorStyle={{ color: "red" }}
+            errorMessage={formError.password}
           />
           <Input
             placeholder="Confirm Password"

@@ -29,7 +29,7 @@ const ParkingActionDisplay = (props: IProps) => {
       <Text style={styles.text}>
         {formatDate(new Date(createdAt * 1000), "HH:mm")}
       </Text>
-      <Text style={styles.text}>
+      <Text style={styles.text} numberOfLines={1}>
         {username} {isPark ? "parked at" : "left"} {officeName} office, lot{" "}
         {lotName}
       </Text>

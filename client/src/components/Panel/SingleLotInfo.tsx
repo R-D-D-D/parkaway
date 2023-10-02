@@ -1,14 +1,23 @@
-import { StyleSheet, Text, View } from "react-native"
-import React, { useCallback, useContext } from "react"
-import { Image, Button } from "react-native-elements"
-import { colors } from "../../global/styles"
+import { StyleSheet, Text, View, Alert } from "react-native"
+import React, { useCallback, useContext, useEffect, useState } from "react"
+import { Image, Button, Dialog } from "react-native-elements"
+import { SCREEN_HEIGHT, SCREEN_WIDTH, colors } from "../../global/styles"
 import { ParkingLot } from "../../api/parking_lot"
 import { AppContext } from "../../context"
 import { ActionInfo, parkingActionApi } from "../../api/parking_action"
 import { getDistance } from "geolib"
 import * as Location from "expo-location"
-import { showLongToast } from "../../utils/toast"
+import { showLongToast, showShortToast } from "../../utils/toast"
 import { formatDate } from "../../utils/date"
+import { NativeStackNavigationProp } from "@react-navigation/native-stack"
+import { RootStackParamList } from "../../navigation"
+import { useNavigation } from "@react-navigation/native"
+import { twilioApi } from "../../api/twilio"
+
+type SingleLotNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  "Chat"
+>
 
 interface IProps {
   calloutShown: number | null
@@ -17,6 +26,7 @@ interface IProps {
   isTestMode: boolean
   parkingActions: ActionInfo[]
 }
+
 const SingleLotInfo = (props: IProps) => {
   // console.log("[SingleLotInfo] props:", props)
   const {
@@ -27,6 +37,10 @@ const SingleLotInfo = (props: IProps) => {
     parkingActions,
   } = props
   const { user } = useContext(AppContext)
+  const [parking, setParking] = useState(false)
+  const navigation = useNavigation<SingleLotNavigationProp>()
+  const [visible, setVisible] = useState(false)
+  const [otherUserId, setOtherUserId] = useState<string>("")
 
   const parkingLot = parkingLots[calloutShown]
   const lotParkingActions = parkingActions.filter(
@@ -41,6 +55,7 @@ const SingleLotInfo = (props: IProps) => {
 
   const handlePark = async () => {
     if (user) {
+      setParking(true)
       if (!isTestMode && !isUserParkingHere) {
         const {
           coords: { latitude, longitude },
@@ -55,6 +70,7 @@ const SingleLotInfo = (props: IProps) => {
         )
         if (distance > 20) {
           showLongToast("You seem too far from the parking lot")
+          setParking(false)
           return
         }
       }
@@ -67,9 +83,46 @@ const SingleLotInfo = (props: IProps) => {
         await resetParkingLots()
       } catch (e) {
         console.log(e)
+      } finally {
+        setParking(false)
       }
     }
   }
+
+  const handleSwap = async (otherUserId: string) => {
+    setVisible(true)
+    setOtherUserId(otherUserId)
+  }
+
+  const handleNotify = async () => {
+    try {
+      await twilioApi.createMsg({
+        text: `User ${user?.username} wants to swap parking lot with you, go in to the app to check it out!`,
+        toPhoneNumber: "+19179324155",
+      })
+      alertNotiSuccess()
+    } catch (e) {
+      console.log(e)
+      showShortToast(e as string)
+      setOtherUserId("")
+    }
+  }
+
+  const alertNotiSuccess = () =>
+    Alert.alert("Success!", "He's got your request, text him now!", [
+      {
+        text: "Text now",
+        onPress: () => {
+          setOtherUserId("")
+          navigation.navigate("Chat", { otherUserId })
+        },
+      },
+      {
+        text: "Cancel",
+        onPress: () => setOtherUserId(""),
+        style: "cancel",
+      },
+    ])
 
   const getBtnConfig = useCallback(() => {
     if (isUserParkingHere) {
@@ -138,6 +191,15 @@ const SingleLotInfo = (props: IProps) => {
                     Here since{"\n"}
                     {getFormattedTime(idx)}
                   </Text>
+                  {parkingLot.freeLots === 0 && (
+                    <Button
+                      title={"Swap"}
+                      onPress={() => handleSwap(parkingLot.currUsers[idx].id)}
+                      buttonStyle={{
+                        backgroundColor: colors.red,
+                      }}
+                    />
+                  )}
                 </View>
               )
             )}
@@ -157,7 +219,27 @@ const SingleLotInfo = (props: IProps) => {
             titleStyle={{ color: "white", marginHorizontal: 20 }}
             onPress={() => handlePark()}
             disabled={getBtnConfig().disabled}
+            loading={parking}
           />
+          <Dialog
+            isVisible={visible}
+            onBackdropPress={() => setVisible(!visible)}
+          >
+            <Dialog.Title title="By confirming the person will receive a notification" />
+            <Dialog.Actions>
+              <Dialog.Button
+                title="CONFIRM"
+                onPress={async () => {
+                  setVisible(!visible)
+                  await handleNotify()
+                }}
+              />
+              <Dialog.Button
+                title="CANCEL"
+                onPress={() => setVisible(!visible)}
+              />
+            </Dialog.Actions>
+          </Dialog>
         </View>
       )}
     </>
@@ -176,18 +258,18 @@ const styles = StyleSheet.create({
   avatarRowContainer: {
     flexDirection: "row",
     justifyContent: "space-around",
-    marginVertical: 32,
+    marginVertical: SCREEN_HEIGHT * 0.35 * 0.05,
   },
   avatarContainer: {
     alignItems: "center",
   },
   timeText: {
-    fontSize: 14,
+    fontSize: 10,
     color: colors.grey4,
     textAlign: "center",
   },
   avatar: {
-    width: 80,
-    height: 80,
+    width: SCREEN_WIDTH / 6,
+    height: SCREEN_WIDTH / 6,
   },
 })

@@ -34,6 +34,7 @@ import {
 } from "../api/parking_action"
 import FloatingMenuBtn from "../components/FloatingMenuButton"
 import { showLongToast, showShortToast } from "../utils/toast"
+import Spinner from "../components/Spinner"
 
 const LAT_DELTA = 0.005
 const LNG_DELTA = 0.0025
@@ -44,34 +45,44 @@ type HomeScreenNavigationProp = NativeStackNavigationProp<
 >
 
 const HomeScreen = ({ navigation }) => {
-  const [map, setMap] = useState(null)
+  const [map, setMap] = useState<MapView | null>(null)
   // coordinate of the current user
-  const [latLng, setLatLng] = useState(null)
-  const [errMsg, setErrorMsg] = useState(null)
+  const [latLng, setLatLng] = useState<{
+    latitude: number
+    longitude: number
+  } | null>(null)
   let markerRefs = useRef<MapMarker[]>([])
-  const [calloutShown, setCalloutShown] = useState<number>(null)
+  const [calloutShown, setCalloutShown] = useState<number | null>(null)
   const [parkedAt, setParkedAt] = useState(null)
-  const appContext = useContext(AppContext)
+  const {
+    user,
+    parkingLots,
+    setParkingLots,
+    parkingActions,
+    setParkingActions,
+  } = useContext(AppContext)
   // const navigation = useNavigation<HomeScreenNavigationProp>()
   const isFocused = useIsFocused()
-  const [parkingLots, setParkingLots] = useState<ParkingLot[]>([])
   const [newParkingLot, setNewParkingLot] = useState<{
     longitude: number
     latitude: number
-  }>(null)
+  } | null>(null)
   const [isAdminEditing, setIsAdminEditing] = useState(false)
   const [rerenderMarkersFlag, triggerRerenderMarkers] = useState(false)
-  const [parkingActions, setParkingActions] = useState<ActionInfo[]>([])
   const [isTestMode, setIsTestMode] = useState(false)
+  const [mapReady, setMapReady] = useState(false)
+  const [dataReady, setDataReady] = useState(false)
 
   const handleCenter = () => {
-    const { latitude, longitude } = latLng
-    map.animateToRegion({
-      latitude,
-      longitude,
-      latitudeDelta: LAT_DELTA,
-      longitudeDelta: LNG_DELTA,
-    })
+    if (latLng && map) {
+      const { latitude, longitude } = latLng
+      map.animateToRegion({
+        latitude,
+        longitude,
+        latitudeDelta: LAT_DELTA,
+        longitudeDelta: LNG_DELTA,
+      })
+    }
   }
 
   const handleEdit = () => {
@@ -85,18 +96,10 @@ const HomeScreen = ({ navigation }) => {
     setIsTestMode(!isTestMode)
   }
 
-  const randomPlusMinus = () => {
-    if (Math.random() < 0.5) {
-      return -1
-    } else {
-      return 1
-    }
-  }
-
   const checkPermission = async () => {
     let { status } = await Location.requestForegroundPermissionsAsync()
     if (status !== "granted") {
-      setErrorMsg("Permission to access location was denied")
+      showLongToast("Permission to access location was denied")
       return
     }
 
@@ -109,9 +112,7 @@ const HomeScreen = ({ navigation }) => {
   useEffect(() => {
     let userParkedFlag = false
     parkingLots.forEach((lot) => {
-      if (
-        lot.currUsers.findIndex((user) => user.id === appContext.user?.id) >= 0
-      ) {
+      if (lot.currUsers.findIndex((u) => u.id === user?.id) >= 0) {
         setParkedAt(lot.id)
         userParkedFlag = true
       }
@@ -121,14 +122,12 @@ const HomeScreen = ({ navigation }) => {
 
   useEffect(() => {
     const init = async () => {
-      // console.log("Initializing with context: ", appContext)
-      if (appContext.user) {
+      console.log("init")
+      if (user) {
+        setDataReady(false)
         checkPermission()
-        const lots = (await parkingApi.listParkingLots()).data
-        const parkingActions = (await parkingActionApi.listParkingAction(20))
-          .data
-        setParkingLots(lots)
-        setParkingActions(parkingActions)
+        await resetParkingLots()
+        setDataReady(true)
       } else {
         navigation.navigate("LogIn")
       }
@@ -157,16 +156,18 @@ const HomeScreen = ({ navigation }) => {
   }
 
   const resetParkingLots = async () => {
+    setCalloutShown(null)
     const lots = (await parkingApi.listParkingLots()).data
     const parkingActions = (await parkingActionApi.listParkingAction(20)).data
     setParkingLots(lots)
     setParkingActions(parkingActions)
     triggerRerenderMarkers(!rerenderMarkersFlag)
     await wait(10)
-    if (calloutShown !== null) {
+    if (markerRefs.current[calloutShown] && calloutShown !== null) {
       markerRefs.current[calloutShown].showCallout()
     }
   }
+
   const handleCreateParkingLot = async (parkingLot: Omit<ParkingLot, "id">) => {
     try {
       await parkingApi.createParkingLot(parkingLot)
@@ -188,7 +189,7 @@ const HomeScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      {latLng !== null && appContext.user && (
+      {latLng !== null && user && (
         <View style={{ alignItems: "center", justifyContent: "center" }}>
           <MapView
             // onUserLocationChange={onUserLocationChange}
@@ -212,6 +213,7 @@ const HomeScreen = ({ navigation }) => {
                 handleNewParkingLot(e)
               }
             }}
+            onMapReady={() => setMapReady(true)}
           >
             {parkingLots.map((lot, idx) => (
               <Marker
@@ -245,9 +247,9 @@ const HomeScreen = ({ navigation }) => {
                 pinColor={"grey"}
               >
                 {/* <Image
-                    source={require("../../assets/leave-action.png")}
-                    style={styles.parkingImg}
-                  /> */}
+                        source={require("../../assets/leave-action.png")}
+                        style={styles.parkingImg}
+                      /> */}
               </Marker>
             )}
           </MapView>
@@ -258,7 +260,7 @@ const HomeScreen = ({ navigation }) => {
             />
           </FloatingMenuBtn>
 
-          {appContext.user?.isAdmin ? (
+          {user.isAdmin ? (
             <FloatingMenuBtn style={styles.adminEditBtn} onPress={handleEdit}>
               {isAdminEditing ? (
                 <Image
@@ -303,6 +305,7 @@ const HomeScreen = ({ navigation }) => {
           />
         </View>
       )}
+      {(!mapReady || !dataReady) && <Spinner />}
     </View>
   )
 }
@@ -312,6 +315,7 @@ const styles = StyleSheet.create({
   container: {
     // flex: 1,
     backgroundColor: colors.white,
+    position: "relative",
   },
   header: {
     backgroundColor: colors.blue,

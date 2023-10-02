@@ -12,12 +12,11 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
-      "config": {
-        "googleMapsApiKey": "AIzaSyCrcVZBa5mm3WnW7m5m1kpSfxc5kakuflA"
-      },
       "bundleIdentifier": "com.company.parking"
     },
     "android": {
@@ -25,15 +24,21 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.company.parking",
-      "config": {
-        "googleMaps": {
-          "apiKey": "AIzaSyBTbYwhEn9JxE1VcX3zOMLSBIA0iTLjnDw"
-        }
-      }
+      "package": "com.company.parking"
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "a7f4dbbc-a586-4a9b-84fe-74bcddf792b3"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/a7f4dbbc-a586-4a9b-84fe-74bcddf792b3"
     }
   }
 }
