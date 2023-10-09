@@ -19,7 +19,7 @@ import { db } from "../firebase"
 import { AppContext } from "../context"
 import { Chatroom } from "./ChatScreen"
 import Spinner from "../components/Spinner"
-import { Divider, ListItem, Image } from "react-native-elements"
+import { Divider, ListItem, Image, Text } from "react-native-elements"
 import { IMessage } from "react-native-gifted-chat"
 import { formatDate } from "../utils/date"
 
@@ -59,24 +59,6 @@ const ChatListScreen = ({ navigation }) => {
         limit(50)
       )
 
-      // const messageQ = (chatroomId: string) => {
-      //   query(collection(db, "chatrooms", chatroomId, "messages"), limit(1))
-      // }
-
-      // const unsubscribeChatrooms = onSnapshot(q, (chatroomsSnapshot) => {
-      //   const unsubscribeMessagesMap = new Map();
-      //   const fetchedChatrooms: Chatroom[] = []
-      //   QuerySnapshot.forEach((doc) => {
-
-      //     fetchedChatrooms.push({
-      //       ...doc.data(),
-      //       id: doc.id,
-      //     } as Chatroom)
-      //   })
-      //   console.log("reactive fetchedChatrooms:", fetchedChatrooms)
-      //   setChatrooms(fetchedChatrooms)
-      // })
-      // return () => unsubscribeChatrooms()
       const unsubscribeChatrooms = onSnapshot(q, (chatroomsSnapshot) => {
         const unsubscribeMessagesMap = new Map()
 
@@ -94,14 +76,15 @@ const ChatListScreen = ({ navigation }) => {
             unsubscribeMessagesMap.delete(chatroomId)
           }
 
-          const messagesRef = collection(
-            doc(db, "chatrooms", chatroomId),
-            "messages"
+          const messageQuery = query(
+            collection(db, "chatrooms", chatroomId, "messages"),
+            orderBy("createdAt", "desc"),
+            limit(50)
           )
 
           // Listen for messages updates in each chatroom
           const unsubscribeMessages = onSnapshot(
-            messagesRef,
+            messageQuery,
             (messagesSnapshot) => {
               const newMessages: IMessage[] = messagesSnapshot.docs.map(
                 (docSnapshot) => docSnapshot.data()
@@ -131,7 +114,7 @@ const ChatListScreen = ({ navigation }) => {
         }
       })
     }
-  }, [])
+  }, [user])
 
   // useEffect(() => {
   //   console.log("chatrooms asdf", chatrooms[0]?.messages[0]?.createdAt)
@@ -151,27 +134,34 @@ const ChatListScreen = ({ navigation }) => {
           <ListItem
             onPress={() => navigation.navigate("Chat", { chatroom: item })}
           >
-            <ListItem.Content>
-              <View style={styles.item}>
+            <View style={styles.item}>
+              <View style={styles.otherUserName}>
                 <Image
                   style={styles.iconImg}
                   source={require("../../assets/profile-grey.png")}
                 />
-                <ListItem.Title>
-                  {item.username === user?.username
-                    ? item.otherUsername
-                    : item.username}
-                </ListItem.Title>
+                <View>
+                  <Text style={styles.itemTitle}>
+                    {item.username === user?.username
+                      ? item.otherUsername
+                      : item.username}
+                  </Text>
+                  <Text>
+                    {item.messages.length > 0
+                      ? formatDate(
+                          new Date(item.messages[0].createdAt.seconds * 1000),
+                          "MM/dd HH:mm"
+                        )
+                      : ""}
+                  </Text>
+                </View>
               </View>
-              <ListItem.Subtitle>
-                {item.messages.length > 0
-                  ? formatDate(
-                      new Date(item.messages[0].createdAt.seconds * 1000),
-                      "MM/dd HH:mm"
-                    )
-                  : ""}
-              </ListItem.Subtitle>
-            </ListItem.Content>
+              {/* <View style={styles.lastMsg}>
+                <Text>
+                  {item.messages.length > 0 ? item.messages[0].text : ""}
+                </Text>
+              </View> */}
+            </View>
           </ListItem>
         )}
       />
@@ -189,11 +179,23 @@ const styles = StyleSheet.create({
   iconImg: {
     width: 26,
     height: 26,
-    marginTop: 20,
+    marginRight: 10,
+  },
+  otherUserName: {
+    display: "flex",
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginVertical: 10,
   },
   item: {
     display: "flex",
     flexDirection: "row",
-    justifyContent: "flex-start",
+    justifyContent: "space-between",
   },
+  itemTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  lastMsg: {},
 })

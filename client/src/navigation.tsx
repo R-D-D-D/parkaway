@@ -5,7 +5,7 @@ import HomeScreen from "./screens/HomeScreen"
 import LogInScreen from "./screens/LogInScreen"
 import ProfileScreen from "./screens/ProfileScreen"
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs"
-import { Image } from "react-native-elements"
+import { Button, Icon, Image } from "react-native-elements"
 import { StyleSheet } from "react-native"
 import ChatScreen, { Chatroom } from "./screens/ChatScreen"
 import { IUser } from "./context"
@@ -18,7 +18,7 @@ export type RootStackParamList = {
 
 export type ChatStackParamList = {
   Chat: {
-    otherUserId: string
+    otherUser?: IUser
     chatroom?: Chatroom
   }
   ChatList: undefined
@@ -100,28 +100,32 @@ export const MainTab = () => {
 
 export const RootStack = () => {
   return (
-    <NavigationContainer>
-      <Stack.Navigator initialRouteName="Main">
-        <Stack.Screen
-          name="Main"
-          component={MainTab}
-          options={{ headerShown: false }}
-        />
+    <Stack.Navigator initialRouteName="Main">
+      <Stack.Screen
+        name="Main"
+        component={MainTab}
+        options={{ headerShown: false }}
+      />
 
-        <Stack.Screen
-          name="LogIn"
-          component={LogInScreen}
-          options={{ headerShown: false }}
-        />
-      </Stack.Navigator>
-    </NavigationContainer>
+      <Stack.Screen
+        name="LogIn"
+        component={LogInScreen}
+        options={{ headerShown: false }}
+      />
+    </Stack.Navigator>
   )
 }
 
 export const ChatStackNavigator = () => {
   return (
     <ChatStack.Navigator initialRouteName="ChatList">
-      <ChatStack.Screen name="Chat" component={ChatScreen} />
+      <ChatStack.Screen
+        name="Chat"
+        component={ChatScreen}
+        options={({ route }) => ({
+          title: route.params.otherUser?.username,
+        })}
+      />
       <ChatStack.Screen name="ChatList" component={ChatListScreen} />
     </ChatStack.Navigator>
   )

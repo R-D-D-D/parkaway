@@ -33,7 +33,7 @@ import {
   parkingActionApi,
 } from "../api/parking_action"
 import FloatingMenuBtn from "../components/FloatingMenuButton"
-import { showLongToast, showShortToast } from "../utils/toast"
+import { showToast } from "../utils/toast"
 import Spinner from "../components/Spinner"
 
 const LAT_DELTA = 0.005
@@ -99,7 +99,10 @@ const HomeScreen = ({ navigation }) => {
   const checkPermission = async () => {
     let { status } = await Location.requestForegroundPermissionsAsync()
     if (status !== "granted") {
-      showLongToast("Permission to access location was denied")
+      showToast({
+        title: "Permission to access location was denied",
+        type: "error",
+      })
       return
     }
 
@@ -173,9 +176,9 @@ const HomeScreen = ({ navigation }) => {
       await parkingApi.createParkingLot(parkingLot)
       await resetParkingLots()
       setNewParkingLot(null)
-      showShortToast("Success!")
+      showToast({ title: "Success!", type: "success", duration: 2000 })
     } catch (e) {
-      showLongToast(e)
+      showToast({ title: (e as Error).message, type: "error" })
     }
   }
 

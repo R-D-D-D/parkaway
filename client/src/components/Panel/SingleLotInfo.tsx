@@ -3,16 +3,33 @@ import React, { useCallback, useContext, useEffect, useState } from "react"
 import { Image, Button, Dialog } from "react-native-elements"
 import { SCREEN_HEIGHT, SCREEN_WIDTH, colors } from "../../global/styles"
 import { ParkingLot } from "../../api/parking_lot"
-import { AppContext } from "../../context"
+import { AppContext, IUser, NotificationType } from "../../context"
 import { ActionInfo, parkingActionApi } from "../../api/parking_action"
 import { getDistance } from "geolib"
 import * as Location from "expo-location"
-import { showLongToast, showShortToast } from "../../utils/toast"
+import { showToast } from "../../utils/toast"
 import { formatDate } from "../../utils/date"
 import { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { RootStackParamList } from "../../navigation"
 import { useNavigation } from "@react-navigation/native"
 import { twilioApi } from "../../api/twilio"
+import {
+  query,
+  collection,
+  orderBy,
+  onSnapshot,
+  limit,
+  setDoc,
+  doc,
+  where,
+  or,
+  getDocs,
+  addDoc,
+  getDoc,
+  and,
+} from "firebase/firestore"
+import { db } from "../../firebase"
+import { Notifier, Easing } from "react-native-notifier"
 
 type SingleLotNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -40,7 +57,7 @@ const SingleLotInfo = (props: IProps) => {
   const [parking, setParking] = useState(false)
   const navigation = useNavigation<SingleLotNavigationProp>()
   const [visible, setVisible] = useState(false)
-  const [otherUserId, setOtherUserId] = useState<string>("")
+  const [otherUser, setOtherUser] = useState<IUser | null>(null)
 
   const parkingLot = parkingLots[calloutShown]
   const lotParkingActions = parkingActions.filter(
@@ -69,7 +86,10 @@ const SingleLotInfo = (props: IProps) => {
           }
         )
         if (distance > 20) {
-          showLongToast("You seem too far from the parking lot")
+          showToast({
+            title: "You seem too far from the parking lot",
+            type: "warn",
+          })
           setParking(false)
           return
         }
@@ -89,40 +109,44 @@ const SingleLotInfo = (props: IProps) => {
     }
   }
 
-  const handleSwap = async (otherUserId: string) => {
+  const handleSwap = async (otherUser: IUser) => {
     setVisible(true)
-    setOtherUserId(otherUserId)
+    setOtherUser(otherUser)
   }
 
   const handleNotify = async () => {
     try {
-      await twilioApi.createMsg({
-        text: `User ${user?.username} wants to swap parking lot with you, go in to the app to check it out!`,
-        toPhoneNumber: "+19179324155",
+      // await twilioApi.createMsg({
+      //   text: `User ${user?.username} wants to swap parking lot with you, go in to the app to check it out!`,
+      //   toPhoneNumber: "+19179324155",
+      // })
+      // await addDoc(collection(db, "notifications"), {
+      //   title: "You have a swap request!",
+      //   description: `User ${user?.username} wants to swap parking lot with you, chat with him now'`,
+      //   receiveUser: otherUser,
+      //   originUser: user,
+      //   isChecked: false,
+      //   type: NotificationType.SWAP_REQUEST,
+      // })
+      setOtherUser(null)
+      navigation.navigate("ChatStack", {
+        screen: "Chat",
+        params: { otherUser: otherUser },
       })
-      alertNotiSuccess()
+      Notifier.showNotification({
+        title: "Success!",
+        description: "He's got your request, text him now!",
+        duration: 0,
+        showAnimationDuration: 800,
+        showEasing: Easing.bounce,
+        hideOnPress: true,
+        queueMode: "standby",
+      })
     } catch (e) {
       console.log(e)
-      showShortToast(e as string)
-      setOtherUserId("")
+      setOtherUser(null)
     }
   }
-
-  const alertNotiSuccess = () =>
-    Alert.alert("Success!", "He's got your request, text him now!", [
-      {
-        text: "Text now",
-        onPress: () => {
-          setOtherUserId("")
-          navigation.navigate("Chat", { otherUserId })
-        },
-      },
-      {
-        text: "Cancel",
-        onPress: () => setOtherUserId(""),
-        style: "cancel",
-      },
-    ])
 
   const getBtnConfig = useCallback(() => {
     if (isUserParkingHere) {
@@ -194,7 +218,7 @@ const SingleLotInfo = (props: IProps) => {
                   {parkingLot.freeLots === 0 && (
                     <Button
                       title={"Swap"}
-                      onPress={() => handleSwap(parkingLot.currUsers[idx].id)}
+                      onPress={() => handleSwap(parkingLot.currUsers[idx])}
                       buttonStyle={{
                         backgroundColor: colors.red,
                       }}

@@ -34,7 +34,7 @@ export interface Chatroom {
 const ChatScreen = ({ route, navigation }) => {
   const [messages, setMessages] = useState<IMessage[]>([])
   const [chatroom, setChatroom] = useState<Chatroom>()
-  const { otherUserId, chatroom: routeChatroom } = route.params
+  const { otherUser, chatroom: routeChatroom } = route.params
   const { user } = useContext(AppContext)
 
   // useEffect(() => {
@@ -75,10 +75,10 @@ const ChatScreen = ({ route, navigation }) => {
             or(
               and(
                 where("userId", "==", user.id),
-                where("otherUserId", "==", otherUserId)
+                where("otherUserId", "==", otherUser.id)
               ),
               and(
-                where("userId", "==", otherUserId),
+                where("userId", "==", otherUser.id),
                 where("otherUserId", "==", user.id)
               )
             )
@@ -87,12 +87,11 @@ const ChatScreen = ({ route, navigation }) => {
 
           if (querySnapshot.size === 0) {
             // no chatroom has been created
-            const otherUser = (await userApi.getUser(otherUserId)).data
             const chatroomParams = {
               messages: [],
               userId: user.id,
               username: user.username,
-              otherUserId: otherUserId,
+              otherUserId: otherUser.id,
               otherUsername: otherUser.username,
             }
             const docRef = await addDoc(
@@ -138,7 +137,7 @@ const ChatScreen = ({ route, navigation }) => {
     }
 
     init()
-  }, [otherUserId])
+  }, [otherUser])
 
   const onSend = async (messages: IMessage[] = []) => {
     if (chatroom) {

@@ -10,7 +10,7 @@ import {
 import { Input, Button } from "react-native-elements"
 import { ParkingLot } from "../../api/parking_lot"
 import { colors } from "../../global/styles"
-import { showShortToast } from "../../utils/toast"
+import { showToast } from "../../utils/toast"
 
 interface IProps {
   handleCreateParkingLot: (
@@ -47,7 +47,7 @@ const EditParkingLots = (props: IProps) => {
         setParkingLotForm(null)
       } catch (e) {}
     } else {
-      showShortToast("Please fill in all information")
+      showToast({ title: "Please fill in all information", type: "error" })
     }
   }
 
@@ -76,7 +76,10 @@ const EditParkingLots = (props: IProps) => {
             placeholder="Total Lot"
             onChangeText={(totalLots) => {
               if (parseInt(totalLots) > 6) {
-                showShortToast("Maximum number of lot is 6")
+                showToast({
+                  title: "Maximum number of lot is 6",
+                  type: "error",
+                })
                 return
               }
               setParkingLotForm({

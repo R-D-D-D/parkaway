@@ -5,7 +5,7 @@ import { colors } from "../global/styles"
 import { userApi } from "../api/user"
 import { AppContext } from "../context"
 import Toast from "react-native-root-toast"
-import { showLongToast, showShortToast } from "../utils/toast"
+import { showToast } from "../utils/toast"
 import { useNavigation } from "@react-navigation/native"
 import { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { RootStackParamList } from "../navigation"
@@ -127,15 +127,17 @@ const LogInScreen = () => {
           const resp = await userApi.signinUser(signinInfo)
           // console.log("[LoginScreen: signin user call]", resp)
           if (resp.status === "success") {
-            showShortToast("success")
             setUser(resp.data)
             navigation.navigate("Main", { screen: "Home" })
           } else {
-            showLongToast(resp.status)
+            showToast({
+              title: resp.status,
+              type: "error",
+            })
           }
         } catch (e) {
           console.log(e)
-          showLongToast((e as Error).message)
+          showToast({ title: (e as Error).message, type: "error" })
         }
       }
     } else {
@@ -149,17 +151,16 @@ const LogInScreen = () => {
           const resp = await userApi.createUser(signupInfo)
           // console.log("[LoginScreen: create user call]", resp)
           if (resp.status === "success") {
-            showShortToast("success")
             setUser(resp.data)
             navigation.navigate("Main", { screen: "Home" })
           } else {
-            showLongToast(resp.status)
+            showToast({ title: resp.status, type: "error" })
           }
         } catch (e) {
-          showLongToast((e as Error).message)
+          showToast({ title: (e as Error).message, type: "error" })
         }
       } else {
-        showLongToast("You have missing fields")
+        showToast({ title: "You have missing fields", type: "error" })
       }
     }
   }

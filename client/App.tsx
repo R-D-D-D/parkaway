@@ -4,16 +4,23 @@ import { colors, parameters } from "./src/global/styles"
 import HomeScreen from "./src/screens/HomeScreen"
 import * as SplashScreen from "expo-splash-screen"
 import * as Font from "expo-font"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { AppContext, IUser, AppContextProvider } from "./src/context"
 import { RootStack } from "./src/navigation"
 import { RootSiblingParent } from "react-native-root-siblings"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { NotifierWrapper } from "react-native-notifier"
+import { GestureHandlerRootView } from "react-native-gesture-handler"
+import { Button } from "react-native-elements"
+import { NavigationContainer } from "@react-navigation/native"
 
 const SCREEN_WIDTH = Dimensions.get("window").width
 SplashScreen.preventAutoHideAsync()
 
 const App = () => {
   const [appIsReady, setAppIsReady] = useState(false)
+  const queryClient = new QueryClient()
+  const notifierRef = useRef()
 
   useEffect(() => {
     async function prepare() {
@@ -50,11 +57,19 @@ const App = () => {
 
   return (
     <RootSiblingParent>
-      <AppContextProvider >
-        <View style={styles.container} onLayout={onLayoutRootView}>
-          <RootStack />
-        </View>
-      </AppContextProvider>
+      <QueryClientProvider client={queryClient}>
+        <NavigationContainer>
+          <GestureHandlerRootView style={{ flex: 1 }}>
+            <NotifierWrapper>
+              <AppContextProvider>
+                <View style={styles.container} onLayout={onLayoutRootView}>
+                  <RootStack />
+                </View>
+              </AppContextProvider>
+            </NotifierWrapper>
+          </GestureHandlerRootView>
+        </NavigationContainer>
+      </QueryClientProvider>
     </RootSiblingParent>
   )
 }

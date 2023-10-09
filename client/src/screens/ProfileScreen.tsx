@@ -10,6 +10,7 @@ import Card from "../components/Card/Card"
 import { IconType } from "react-native-dynamic-vector-icons"
 import ParkingDurationDisplay from "../components/ParkingDurationDisplay"
 import { ActionInfo, parkingActionApi } from "../api/parking_action"
+import { Notifier } from "react-native-notifier"
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -86,6 +87,7 @@ const ProfileScreen = () => {
             onPress={() => {
               setUser(null)
               navigation.navigate("LogIn")
+              Notifier.clearQueue(true)
             }}
           />
         </View>
