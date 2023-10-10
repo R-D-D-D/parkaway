@@ -120,14 +120,14 @@ const SingleLotInfo = (props: IProps) => {
       //   text: `User ${user?.username} wants to swap parking lot with you, go in to the app to check it out!`,
       //   toPhoneNumber: "+19179324155",
       // })
-      // await addDoc(collection(db, "notifications"), {
-      //   title: "You have a swap request!",
-      //   description: `User ${user?.username} wants to swap parking lot with you, chat with him now'`,
-      //   receiveUser: otherUser,
-      //   originUser: user,
-      //   isChecked: false,
-      //   type: NotificationType.SWAP_REQUEST,
-      // })
+      await addDoc(collection(db, "notifications"), {
+        title: "You have a swap request!",
+        description: `User ${user?.username} wants to swap parking lot with you, chat with him now'`,
+        receiveUser: otherUser,
+        originUser: user,
+        isChecked: false,
+        type: NotificationType.SWAP_REQUEST,
+      })
       setOtherUser(null)
       navigation.navigate("ChatStack", {
         screen: "Chat",

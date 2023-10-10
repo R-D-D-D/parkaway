@@ -82,17 +82,21 @@ export const AppContextProvider = ({ children }: IProps) => {
   const { data } = useQuery({
     queryKey: ["query"],
     queryFn: async () => {
-      const [lots, parkingActions] = await Promise.all([
-        parkingApi.listParkingLots(),
-        parkingActionApi.listParkingAction(20),
-      ])
-      // const lots = (await parkingApi.listParkingLots()).data
-      // const parkingActions = (await parkingActionApi.listParkingAction(20)).data
-      setParkingLots(lots.data)
-      setParkingActions(parkingActions.data)
-      return [lots, parkingActions]
+      if (user) {
+        const [lots, parkingActions] = await Promise.all([
+          parkingApi.listParkingLots(),
+          parkingActionApi.listParkingAction(20),
+        ])
+        // const lots = (await parkingApi.listParkingLots()).data
+        // const parkingActions = (await parkingActionApi.listParkingAction(20)).data
+        setParkingLots(lots.data)
+        setParkingActions(parkingActions.data)
+        return [lots, parkingActions]
+      } else {
+        return null
+      }
     },
-    refetchInterval: 500,
+    refetchInterval: 1000,
   })
 
   useEffect(() => {

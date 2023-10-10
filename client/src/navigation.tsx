@@ -119,6 +119,7 @@ export const RootStack = () => {
 export const ChatStackNavigator = () => {
   return (
     <ChatStack.Navigator initialRouteName="ChatList">
+      <ChatStack.Screen name="ChatList" component={ChatListScreen} />
       <ChatStack.Screen
         name="Chat"
         component={ChatScreen}
@@ -126,7 +127,6 @@ export const ChatStackNavigator = () => {
           title: route.params.otherUser?.username,
         })}
       />
-      <ChatStack.Screen name="ChatList" component={ChatListScreen} />
     </ChatStack.Navigator>
   )
 }
