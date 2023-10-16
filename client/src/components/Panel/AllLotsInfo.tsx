@@ -1,22 +1,23 @@
 import { StyleSheet, Text, View, ScrollView } from "react-native"
-import React from "react"
+import React, { useContext } from "react"
 import InfoTag from "../InfoTag"
 import { Divider, ListItem } from "react-native-elements"
 import ParkingActionDisplay from "../ParkingActionDisplay"
-import { ActionInfo, ParkingAction } from "../../api/parking_action"
+import { ParkingAction } from "../../api/parking_action"
 import { ParkingLot } from "../../api/parking_lot"
 import { SCREEN_HEIGHT } from "../../global/styles"
+import { AppContext } from "../../context"
 
 interface IProps {
-  parkingActions: ActionInfo[]
+  parkingActions: ParkingAction[]
   parkingLots: ParkingLot[]
 }
 
 const AllLotsInfo = (props: IProps) => {
-  const { parkingActions, parkingLots } = props
+  const { parkingActions, parkingLots } = useContext(AppContext)
   const calculateFreeLots = (): number => {
     return parkingLots
-      .map((lot) => lot.freeLots)
+      .map((lot) => lot.totalLots - lot.currUsers.length)
       .reduce((lot, prevLot) => lot + prevLot, 0)
   }
 

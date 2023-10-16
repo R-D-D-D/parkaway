@@ -27,11 +27,7 @@ import { RootStackParamList } from "../navigation"
 import { useIsFocused } from "@react-navigation/core"
 import { ParkingLot, parkingApi } from "../api/parking_lot"
 import { wait } from "../utils/time"
-import {
-  ActionInfo,
-  ParkingAction,
-  parkingActionApi,
-} from "../api/parking_action"
+import { ParkingAction, parkingActionApi } from "../api/parking_action"
 import FloatingMenuBtn from "../components/FloatingMenuButton"
 import { showToast } from "../utils/toast"
 import Spinner from "../components/Spinner"
@@ -52,15 +48,9 @@ const HomeScreen = ({ navigation }) => {
     longitude: number
   } | null>(null)
   let markerRefs = useRef<MapMarker[]>([])
-  const [calloutShown, setCalloutShown] = useState<number | null>(null)
-  const [parkedAt, setParkedAt] = useState(null)
-  const {
-    user,
-    parkingLots,
-    setParkingLots,
-    parkingActions,
-    setParkingActions,
-  } = useContext(AppContext)
+  const [parkedAt, setParkedAt] = useState<string | null>(null)
+  const { user, parkingLots, parkingActions, calloutShown, setCalloutShown } =
+    useContext(AppContext)
   // const navigation = useNavigation<HomeScreenNavigationProp>()
   const isFocused = useIsFocused()
   const [newParkingLot, setNewParkingLot] = useState<{
@@ -71,7 +61,7 @@ const HomeScreen = ({ navigation }) => {
   const [rerenderMarkersFlag, triggerRerenderMarkers] = useState(false)
   const [isTestMode, setIsTestMode] = useState(false)
   const [mapReady, setMapReady] = useState(false)
-  const [dataReady, setDataReady] = useState(false)
+  const dataReady = true
 
   const handleCenter = () => {
     if (latLng && map) {
@@ -121,16 +111,22 @@ const HomeScreen = ({ navigation }) => {
       }
     })
     if (!userParkedFlag) setParkedAt(null)
+    const resetMarker = async () => {
+      setCalloutShown(null)
+      triggerRerenderMarkers(!rerenderMarkersFlag)
+      await wait(10)
+      if (calloutShown !== null && markerRefs.current[calloutShown]) {
+        markerRefs.current[calloutShown].showCallout()
+      }
+    }
+
+    resetMarker()
   }, [parkingLots])
 
   useEffect(() => {
     const init = async () => {
-      console.log("init")
       if (user) {
-        setDataReady(false)
         checkPermission()
-        await resetParkingLots()
-        setDataReady(true)
       } else {
         navigation.navigate("LogIn")
       }
@@ -158,23 +154,22 @@ const HomeScreen = ({ navigation }) => {
     })
   }
 
-  const resetParkingLots = async () => {
-    setCalloutShown(null)
-    const lots = (await parkingApi.listParkingLots()).data
-    const parkingActions = (await parkingActionApi.listParkingAction(20)).data
-    setParkingLots(lots)
-    setParkingActions(parkingActions)
-    triggerRerenderMarkers(!rerenderMarkersFlag)
-    await wait(10)
-    if (markerRefs.current[calloutShown] && calloutShown !== null) {
-      markerRefs.current[calloutShown].showCallout()
-    }
-  }
+  // const resetParkingLots = async () => {
+  //   setCalloutShown(null)
+  //   const lots = (await parkingApi.listParkingLots()).data
+  //   const parkingActions = (await parkingActionApi.listParkingAction(20)).data
+  //   setParkingLots(lots)
+  //   setParkingActions(parkingActions)
+  //   triggerRerenderMarkers(!rerenderMarkersFlag)
+  //   await wait(10)
+  //   if (markerRefs.current[calloutShown] && calloutShown !== null) {
+  //     markerRefs.current[calloutShown].showCallout()
+  //   }
+  // }
 
   const handleCreateParkingLot = async (parkingLot: Omit<ParkingLot, "id">) => {
     try {
       await parkingApi.createParkingLot(parkingLot)
-      await resetParkingLots()
       setNewParkingLot(null)
       showToast({ title: "Success!", type: "success", duration: 2000 })
     } catch (e) {
@@ -186,7 +181,7 @@ const HomeScreen = ({ navigation }) => {
     if (parkedAt === lot.id) {
       return undefined
     } else {
-      return lot.freeLots === 0 ? "red" : "green"
+      return lot.totalLots - lot.currUsers.length === 0 ? "red" : "green"
     }
   }
 
@@ -236,7 +231,10 @@ const HomeScreen = ({ navigation }) => {
                   />
                 )}
                 <Callout tooltip>
-                  <CustomMarker free={lot.freeLots} total={lot.totalLots} />
+                  <CustomMarker
+                    free={lot.totalLots - lot.currUsers.length}
+                    total={lot.totalLots}
+                  />
                 </Callout>
               </Marker>
             ))}
@@ -302,7 +300,6 @@ const HomeScreen = ({ navigation }) => {
             newParkingLot={newParkingLot}
             calloutShown={calloutShown}
             parkingLots={parkingLots}
-            resetParkingLots={resetParkingLots}
             parkingActions={parkingActions}
             isTestMode={isTestMode}
           />

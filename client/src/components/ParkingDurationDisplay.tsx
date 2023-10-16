@@ -4,12 +4,12 @@ import Androw from "react-native-androw"
 import RNBounceable from "@freakycoder/react-native-bounceable"
 import { SCREEN_WIDTH, colors } from "../global/styles"
 import Icon, { IconType } from "react-native-dynamic-vector-icons"
-import { ActionInfo } from "../api/parking_action"
 import { formatDate } from "../utils/date"
+import { ParkingAction } from "../api/parking_action"
 
 interface IProps {
-  parkingAction: ActionInfo
-  leavingAction?: ActionInfo
+  parkingAction: ParkingAction
+  leavingAction?: ParkingAction
 }
 
 const ParkingDurationDisplay = (props: IProps) => {
@@ -26,9 +26,12 @@ const ParkingDurationDisplay = (props: IProps) => {
               color={"#505e80"}
             />
             <View>
-              <Text style={styles.title}>{parkingAction.lotName}</Text>
+              <Text style={styles.title}>
+                {parkingAction.parkingLot.lotName}
+              </Text>
               <Text style={styles.subTitle}>
-                {formatDate(new Date(parkingAction?.createdAt * 1000), "MM/dd")}
+                {parkingAction.createdAt &&
+                  formatDate(parkingAction.createdAt?.toDate(), "MM/dd")}
               </Text>
             </View>
           </View>
@@ -36,7 +39,8 @@ const ParkingDurationDisplay = (props: IProps) => {
             <View style={styles.time}>
               <View style={styles.innerCircle}></View>
               <Text style={{ fontSize: 12 }}>
-                {formatDate(new Date(parkingAction?.createdAt * 1000), "HH:mm")}
+                {parkingAction.createdAt &&
+                  formatDate(parkingAction.createdAt?.toDate(), "HH:mm")}
               </Text>
             </View>
             <View style={styles.verticalLineWrapper}>
@@ -46,10 +50,8 @@ const ParkingDurationDisplay = (props: IProps) => {
               <View style={styles.time}>
                 <View style={styles.circle}></View>
                 <Text style={{ fontSize: 12 }}>
-                  {formatDate(
-                    new Date(leavingAction?.createdAt * 1000),
-                    "HH:mm"
-                  )}
+                  {leavingAction.createdAt &&
+                    formatDate(leavingAction?.createdAt.toDate(), "HH:mm")}
                 </Text>
               </View>
             )}

@@ -20,6 +20,7 @@ export type ChatStackParamList = {
   Chat: {
     otherUser?: IUser
     chatroom?: Chatroom
+    fromMain?: boolean
   }
   ChatList: undefined
 }
@@ -119,12 +120,17 @@ export const RootStack = () => {
 export const ChatStackNavigator = () => {
   return (
     <ChatStack.Navigator initialRouteName="ChatList">
-      <ChatStack.Screen name="ChatList" component={ChatListScreen} />
+      <ChatStack.Screen
+        name="ChatList"
+        component={ChatListScreen}
+        options={{ title: "Chats" }}
+      />
       <ChatStack.Screen
         name="Chat"
         component={ChatScreen}
         options={({ route }) => ({
           title: route.params.otherUser?.username,
+          headerBackTitle: "Chats",
         })}
       />
     </ChatStack.Navigator>

@@ -9,7 +9,7 @@ import { useNavigation } from "@react-navigation/native"
 import Card from "../components/Card/Card"
 import { IconType } from "react-native-dynamic-vector-icons"
 import ParkingDurationDisplay from "../components/ParkingDurationDisplay"
-import { ActionInfo, parkingActionApi } from "../api/parking_action"
+import { parkingActionApi, ParkingAction } from "../api/parking_action"
 import { Notifier } from "react-native-notifier"
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<
@@ -21,17 +21,17 @@ const ProfileScreen = () => {
   const { user, setUser, parkingActions } = useContext(AppContext)
   const navigation = useNavigation<HomeScreenNavigationProp>()
   const [filteredParkingActions, setFilteredParkingActions] = useState<
-    ActionInfo[][]
+    ParkingAction[][]
   >([])
 
   useEffect(() => {
     const refreshDisplay = async () => {
       if (user) {
         const userParkingActions = parkingActions.filter(
-          (x) => x.userId === user.id
+          (x) => x.user.id === user.id
         )
         if (userParkingActions.length > 0) {
-          const result: ActionInfo[][] = []
+          const result: ParkingAction[][] = []
           if (userParkingActions[0].isPark) {
             result.push([userParkingActions.shift()!])
           }
@@ -60,7 +60,7 @@ const ProfileScreen = () => {
           <Text style={styles.subtitle}>Your latest parkings</Text>
           <ScrollView style={{ paddingHorizontal: 30 }}>
             {filteredParkingActions.length > 0 &&
-              filteredParkingActions.map((actions: ActionInfo[]) => {
+              filteredParkingActions.map((actions: ParkingAction[]) => {
                 if (actions.length === 1) {
                   return (
                     <ParkingDurationDisplay

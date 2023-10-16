@@ -11,11 +11,10 @@ import { Input, Button } from "react-native-elements"
 import { ParkingLot } from "../../api/parking_lot"
 import { colors } from "../../global/styles"
 import { showToast } from "../../utils/toast"
+import { Timestamp, serverTimestamp } from "firebase/firestore"
 
 interface IProps {
-  handleCreateParkingLot: (
-    lot: Omit<ParkingLot, "id" | "currUsers">
-  ) => Promise<void>
+  handleCreateParkingLot: (lot: Omit<ParkingLot, "id">) => Promise<void>
   newParkingLot: {
     longitude: number
     latitude: number
@@ -39,10 +38,11 @@ const EditParkingLots = (props: IProps) => {
         await handleCreateParkingLot({
           lotName: parkingLotForm.lotName,
           officeName: parkingLotForm.officeName,
-          freeLots: parkingLotForm.totalLots,
           totalLots: parkingLotForm.totalLots,
           latitude: newParkingLot.latitude,
           longitude: newParkingLot.longitude,
+          currUsers: [],
+          createdAt: serverTimestamp() as Timestamp,
         })
         setParkingLotForm(null)
       } catch (e) {}

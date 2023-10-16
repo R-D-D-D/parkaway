@@ -1,27 +1,27 @@
+import {
+  FieldValue,
+  Timestamp,
+  addDoc,
+  collection,
+  serverTimestamp,
+} from "firebase/firestore"
 import { IUser } from "../context"
 import { ApiResponse, request } from "./common"
+import { db } from "../firebase"
 
 export type ParkingLot = {
-  id: number
+  id: string
   lotName: string
   officeName: string
   totalLots: number
   latitude: number
   longitude: number
-  freeLots: number
   currUsers: IUser[]
+  createdAt: Timestamp | null
 }
 
 export const parkingApi = {
-  createParkingLot: async (
-    params: Omit<ParkingLot, "id">
-  ): Promise<ApiResponse<ParkingLot>> => {
-    return (
-      await request.post<ApiResponse<ParkingLot>>("/parking-lots", params)
-    ).data
-  },
-
-  listParkingLots: async (): Promise<ApiResponse<ParkingLot[]>> => {
-    return (await request.get<ApiResponse<ParkingLot[]>>("/parking-lots")).data
+  createParkingLot: async (params: Omit<ParkingLot, "id">): Promise<void> => {
+    await addDoc(collection(db, "parking_lots"), params)
   },
 }

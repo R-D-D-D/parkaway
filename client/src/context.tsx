@@ -1,5 +1,5 @@
 import { createContext, useEffect, useState } from "react"
-import { ActionInfo, parkingActionApi } from "./api/parking_action"
+import { ParkingAction, parkingActionApi } from "./api/parking_action"
 import { SigninInfo, SignupInfo } from "./screens/LogInScreen"
 import { ParkingLot, parkingApi } from "./api/parking_lot"
 import { auth } from "./firebase"
@@ -22,9 +22,13 @@ import {
   getDoc,
   and,
   updateDoc,
+  Timestamp,
+  serverTimestamp,
 } from "firebase/firestore"
 import { db } from "./firebase"
 import { useNavigation } from "@react-navigation/native"
+import useNotification from "./hooks/useNotification"
+import dayjs from "dayjs"
 
 export interface IUser {
   username: string
@@ -39,10 +43,12 @@ interface IContext {
   // user: User | null | undefined
   user: IUser | null
   setUser: (user: IUser | null) => void
-  parkingActions: ActionInfo[]
-  setParkingActions: (actions: ActionInfo[]) => void
+  parkingActions: ParkingAction[]
+  setParkingActions: (actions: ParkingAction[]) => void
   parkingLots: ParkingLot[]
   setParkingLots: (lots: ParkingLot[]) => void
+  calloutShown: number | null
+  setCalloutShown: (callout: number | null) => void
 }
 
 type IProps = {
@@ -51,9 +57,10 @@ type IProps = {
 
 export enum NotificationType {
   SWAP_REQUEST = 1,
+  LOT_AVAILABLE,
 }
 
-interface INotification {
+export interface INotification {
   id: string
   title: string
   description: string
@@ -63,44 +70,76 @@ interface INotification {
   type: NotificationType
 }
 
+export interface IBroadcastNotification {
+  id: string
+  title: string
+  description: string
+  originUser: IUser
+  type: NotificationType
+  parkingLotId: string
+  createdAt: Timestamp | null
+}
+
+export interface IBroadcastRead {
+  user: IUser
+  readUntil: Timestamp | null
+  createdAt: Timestamp | null
+}
+
 export const AppContext = createContext<IContext>({
   user: null,
   setUser: (user: IUser | null) => {},
   parkingActions: [],
-  setParkingActions: (actions: ActionInfo[]) => {},
+  setParkingActions: (actions: ParkingAction[]) => {},
   parkingLots: [],
   setParkingLots: (lots: ParkingLot[]) => {},
+  calloutShown: null,
+  setCalloutShown: (callout: null | number) => {},
 })
 
 export const AppContextProvider = ({ children }: IProps) => {
   const [user, setUser] = useState<IUser | null>(null)
-  const [parkingActions, setParkingActions] = useState<ActionInfo[]>([])
+  const [parkingActions, setParkingActions] = useState<ParkingAction[]>([])
   const [parkingLots, setParkingLots] = useState<ParkingLot[]>([])
   const [notifications, setNotifications] = useState<INotification[]>([])
+  const [broadcastNotifications, setBroadcastNotifications] = useState<
+    IBroadcastNotification[]
+  >([])
+  const [broadcastRead, setBroadcastRead] = useState<IBroadcastRead | null>(
+    null
+  )
+  const { markIndividualNotiAsSeen, updateBroadcastReadTime } =
+    useNotification()
+  const [calloutShown, setCalloutShown] = useState<number | null>(null)
   const navigation = useNavigation()
-  // const [user] = useAuthState(auth)
-  const { data } = useQuery({
-    queryKey: ["query"],
-    queryFn: async () => {
-      if (user) {
-        const [lots, parkingActions] = await Promise.all([
-          parkingApi.listParkingLots(),
-          parkingActionApi.listParkingAction(20),
-        ])
-        // const lots = (await parkingApi.listParkingLots()).data
-        // const parkingActions = (await parkingActionApi.listParkingAction(20)).data
-        setParkingLots(lots.data)
-        setParkingActions(parkingActions.data)
-        return [lots, parkingActions]
-      } else {
-        return null
-      }
-    },
-    refetchInterval: 1000,
-  })
 
   useEffect(() => {
     if (user) {
+      const unsubscribeArr = []
+
+      unsubscribeArr.push(
+        onSnapshot(collection(db, "parking_lots"), (querySnapshot) => {
+          const parkingLots: ParkingLot[] = []
+          querySnapshot.forEach((doc) => {
+            parkingLots.push({ ...doc.data(), id: doc.id } as ParkingLot)
+          })
+          setParkingLots(parkingLots)
+        })
+      )
+      const parkingActionsQuery = query(
+        collection(db, "parking_actions"),
+        orderBy("createdAt", "desc")
+      )
+      unsubscribeArr.push(
+        onSnapshot(parkingActionsQuery, (querySnapshot) => {
+          const parkingActions: ParkingAction[] = []
+          querySnapshot.forEach((doc) => {
+            parkingActions.push({ ...doc.data(), id: doc.id } as ParkingAction)
+          })
+          setParkingActions(parkingActions)
+        })
+      )
+
       const notificationQuery = query(
         collection(db, "notifications"),
         and(
@@ -109,64 +148,140 @@ export const AppContextProvider = ({ children }: IProps) => {
         )
       )
 
-      const unsubscribe = onSnapshot(
-        notificationQuery,
-        (notificationSnapshot) => {
+      unsubscribeArr.push(
+        onSnapshot(notificationQuery, (notificationSnapshot) => {
           const fetchedNotifications: INotification[] = []
           notificationSnapshot.forEach((doc) => {
-            if (doc.data().isChecked === false) {
-              fetchedNotifications.push({
-                ...doc.data(),
-                id: doc.id,
-              } as INotification)
-            }
+            fetchedNotifications.push({
+              ...doc.data(),
+              id: doc.id,
+            } as INotification)
           })
-          console.log(fetchedNotifications, user.id)
           const needReplace = !fetchedNotifications.every((el) => {
             return notifications.map((noti) => noti.id).includes(el.id)
           })
-          console.log(needReplace)
           if (needReplace) setNotifications(fetchedNotifications)
-        }
+        })
       )
 
-      return () => unsubscribe()
+      unsubscribeArr.push(
+        onSnapshot(
+          doc(db, "broadcast_reads", `${user.id}`),
+          (querySnapshot) => {
+            if (querySnapshot.exists()) {
+              setBroadcastRead(querySnapshot.data() as IBroadcastRead)
+            } else {
+              setDoc(doc(db, "broadcast_reads", `${user.id}`), {
+                user,
+                readUntil: serverTimestamp(),
+                createdAt: serverTimestamp(),
+              })
+            }
+          }
+        )
+      )
+
+      return () => unsubscribeArr.forEach((unsubscribe) => unsubscribe())
     }
   }, [user])
 
-  const markNotiAsSeen = (id: string) => {
-    updateDoc(doc(db, "notifications", id), { isChecked: true })
-  }
+  useEffect(() => {
+    // console.log("broadcastRead1: ", broadcastRead)
+    if (broadcastRead && broadcastRead.readUntil) {
+      // console.log("broadcastRead2: ", broadcastRead)
+      const broadcastNotificationsQuery = query(
+        collection(db, "broadcast_notifications"),
+        and(
+          where(
+            "createdAt",
+            ">=",
+            Timestamp.fromDate(broadcastRead.readUntil.toDate())
+          ),
+          where(
+            "createdAt",
+            ">=",
+            Timestamp.fromDate(dayjs().subtract(10, "minute").toDate())
+          )
+        )
+      )
+
+      const unsubscribe = onSnapshot(
+        broadcastNotificationsQuery,
+        (broadcastSnapshot) => {
+          let fetchedNotifications: IBroadcastNotification[] = []
+          broadcastSnapshot.forEach((doc) => {
+            fetchedNotifications.push({
+              ...doc.data(),
+              id: doc.id,
+            } as IBroadcastNotification)
+          })
+          fetchedNotifications = fetchedNotifications.filter(
+            (x) => String(x.originUser.id) !== String(user?.id)
+          )
+          const needReplace = !fetchedNotifications.every((el) => {
+            return broadcastNotifications.map((noti) => noti.id).includes(el.id)
+          })
+          if (needReplace) setBroadcastNotifications(fetchedNotifications)
+        }
+      )
+      return () => unsubscribe()
+    }
+  }, [broadcastRead])
 
   useEffect(() => {
-    if (notifications.length > 0) {
-      for (const noti of notifications) {
-        if (noti.type === NotificationType.SWAP_REQUEST) {
-          Notifier.showNotification({
-            title: noti.title,
-            description: noti.description,
-            duration: 0,
-            showAnimationDuration: 800,
-            showEasing: Easing.bounce,
-            onHidden: () => {
-              markNotiAsSeen(noti.id)
-            },
-            onPress: () => {
-              markNotiAsSeen(noti.id)
-              navigation.navigate("ChatStack", {
-                screen: "Chat",
-                params: {
-                  otherUser: noti.originUser,
-                },
-              })
-            },
-            hideOnPress: true,
-            queueMode: "standby",
-          })
+    if (user) {
+      if (notifications.length > 0) {
+        for (const noti of notifications) {
+          if (noti.type === NotificationType.SWAP_REQUEST) {
+            Notifier.showNotification({
+              title: noti.title,
+              description: noti.description,
+              duration: 0,
+              showAnimationDuration: 800,
+              showEasing: Easing.bounce,
+              onHidden: () => {
+                markIndividualNotiAsSeen(noti.id)
+              },
+              onPress: () => {
+                markIndividualNotiAsSeen(noti.id)
+                navigation.navigate("ChatStack", {
+                  screen: "Chat",
+                  params: {
+                    otherUser: noti.originUser,
+                    fromMain: true,
+                  },
+                })
+              },
+              hideOnPress: true,
+              queueMode: "standby",
+            })
+          }
+        }
+      }
+      if (broadcastNotifications.length > 0) {
+        for (const noti of broadcastNotifications) {
+          if (noti.type === NotificationType.LOT_AVAILABLE) {
+            Notifier.showNotification({
+              title: noti.title,
+              description: noti.description,
+              duration: 5000,
+              showAnimationDuration: 800,
+              showEasing: Easing.bounce,
+              onHidden: () => {
+                updateBroadcastReadTime(user)
+              },
+              onPress: () => {
+                updateBroadcastReadTime(user)
+                navigation.navigate("Home")
+              },
+              hideOnPress: true,
+              queueMode: "standby",
+            })
+          }
         }
       }
     }
-  }, [notifications])
+  }, [notifications, broadcastNotifications])
 
   return (
     <AppContext.Provider
@@ -177,6 +292,8 @@ export const AppContextProvider = ({ children }: IProps) => {
         setParkingActions,
         parkingLots,
         setParkingLots,
+        calloutShown,
+        setCalloutShown,
       }}
     >
       {children}

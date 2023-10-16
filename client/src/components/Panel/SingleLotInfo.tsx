@@ -4,13 +4,13 @@ import { Image, Button, Dialog } from "react-native-elements"
 import { SCREEN_HEIGHT, SCREEN_WIDTH, colors } from "../../global/styles"
 import { ParkingLot } from "../../api/parking_lot"
 import { AppContext, IUser, NotificationType } from "../../context"
-import { ActionInfo, parkingActionApi } from "../../api/parking_action"
+import { ParkingAction, parkingActionApi } from "../../api/parking_action"
 import { getDistance } from "geolib"
 import * as Location from "expo-location"
 import { showToast } from "../../utils/toast"
 import { formatDate } from "../../utils/date"
 import { NativeStackNavigationProp } from "@react-navigation/native-stack"
-import { RootStackParamList } from "../../navigation"
+import { ChatStackParamList, RootStackParamList } from "../../navigation"
 import { useNavigation } from "@react-navigation/native"
 import { twilioApi } from "../../api/twilio"
 import {
@@ -27,52 +27,54 @@ import {
   addDoc,
   getDoc,
   and,
+  serverTimestamp,
+  Timestamp,
 } from "firebase/firestore"
 import { db } from "../../firebase"
 import { Notifier, Easing } from "react-native-notifier"
+import useNotification from "../../hooks/useNotification"
 
 type SingleLotNavigationProp = NativeStackNavigationProp<
-  RootStackParamList,
+  ChatStackParamList,
   "Chat"
 >
 
 interface IProps {
   calloutShown: number | null
   parkingLots: ParkingLot[]
-  resetParkingLots: () => Promise<void>
   isTestMode: boolean
-  parkingActions: ActionInfo[]
+  parkingActions: ParkingAction[]
 }
 
 const SingleLotInfo = (props: IProps) => {
   // console.log("[SingleLotInfo] props:", props)
-  const {
-    calloutShown,
-    parkingLots,
-    resetParkingLots,
-    isTestMode,
-    parkingActions,
-  } = props
+  const { calloutShown, parkingLots, isTestMode, parkingActions } = props
   const { user } = useContext(AppContext)
   const [parking, setParking] = useState(false)
   const navigation = useNavigation<SingleLotNavigationProp>()
   const [visible, setVisible] = useState(false)
   const [otherUser, setOtherUser] = useState<IUser | null>(null)
+  const { broadcastLeavingAction, createSwapRequestNotification } =
+    useNotification()
 
-  const parkingLot = parkingLots[calloutShown]
+  const parkingLot = parkingLots[calloutShown || 0]
   const lotParkingActions = parkingActions.filter(
-    (action) => action.parkingLotId === parkingLot.id
+    (action) => action.parkingLot.id === parkingLot.id
   )
+  const freeLots = parkingLot.totalLots - parkingLot.currUsers.length
   const isUserParkingHere =
-    parkingLot?.currUsers.find((u) => u.id === user.id) !== undefined
+    parkingLot?.currUsers.find((u) => u.id === user!.id) !== undefined
   const isUserParked =
     parkingLots.find((lot) =>
-      lot.currUsers.map((u) => u.id).includes(user?.id)
+      lot.currUsers.map((u) => u.id).includes(user!.id)
     ) !== undefined
 
   const handlePark = async () => {
     if (user) {
       setParking(true)
+      if (isUserParkingHere) {
+        broadcastLeavingAction(user, parkingLot)
+      }
       if (!isTestMode && !isUserParkingHere) {
         const {
           coords: { latitude, longitude },
@@ -96,11 +98,11 @@ const SingleLotInfo = (props: IProps) => {
       }
       try {
         await parkingActionApi.createParkingAction({
-          userId: user.id,
-          parkingLotId: parkingLot.id,
+          user: user,
+          parkingLot: parkingLot,
           isPark: !isUserParkingHere,
+          createdAt: serverTimestamp() as Timestamp,
         })
-        await resetParkingLots()
       } catch (e) {
         console.log(e)
       } finally {
@@ -115,36 +117,32 @@ const SingleLotInfo = (props: IProps) => {
   }
 
   const handleNotify = async () => {
-    try {
-      // await twilioApi.createMsg({
-      //   text: `User ${user?.username} wants to swap parking lot with you, go in to the app to check it out!`,
-      //   toPhoneNumber: "+19179324155",
-      // })
-      await addDoc(collection(db, "notifications"), {
-        title: "You have a swap request!",
-        description: `User ${user?.username} wants to swap parking lot with you, chat with him now'`,
-        receiveUser: otherUser,
-        originUser: user,
-        isChecked: false,
-        type: NotificationType.SWAP_REQUEST,
-      })
-      setOtherUser(null)
-      navigation.navigate("ChatStack", {
-        screen: "Chat",
-        params: { otherUser: otherUser },
-      })
-      Notifier.showNotification({
-        title: "Success!",
-        description: "He's got your request, text him now!",
-        duration: 0,
-        showAnimationDuration: 800,
-        showEasing: Easing.bounce,
-        hideOnPress: true,
-        queueMode: "standby",
-      })
-    } catch (e) {
-      console.log(e)
-      setOtherUser(null)
+    if (user && otherUser) {
+      try {
+        await twilioApi.createMsg({
+          text: `User ${user?.username} wants to swap parking lot with you, go in to the app to check it out!`,
+          toPhoneNumber: "+19179324155",
+        })
+        createSwapRequestNotification(user, otherUser)
+        setOtherUser(null)
+        navigation.navigate("ChatStack", {
+          screen: "Chat",
+          params: { otherUser, fromMain: true },
+        })
+
+        Notifier.showNotification({
+          title: "Success!",
+          description: "He's got your request, text him now!",
+          duration: 0,
+          showAnimationDuration: 800,
+          showEasing: Easing.bounce,
+          hideOnPress: true,
+          queueMode: "standby",
+        })
+      } catch (e) {
+        console.log(e)
+        setOtherUser(null)
+      }
     }
   }
 
@@ -154,7 +152,7 @@ const SingleLotInfo = (props: IProps) => {
         text: "Leave",
         disabled: false,
       }
-    } else if (parkingLot.freeLots === 0) {
+    } else if (freeLots === 0) {
       return {
         text: "Unavailable",
         disabled: true,
@@ -174,11 +172,10 @@ const SingleLotInfo = (props: IProps) => {
 
   const getFormattedTime = (idx: number) => {
     const parkingAction = lotParkingActions.find(
-      (action) => action.userId === parkingLot.currUsers[idx].id
+      (action) => action.user.id === parkingLot.currUsers[idx].id
     )
-    if (parkingAction) {
-      const date = new Date(parkingAction.createdAt * 1000)
-      return formatDate(date, "MM/dd HH:mm")
+    if (parkingAction && parkingAction.createdAt) {
+      return formatDate(parkingAction.createdAt.toDate(), "MM/dd HH:mm")
     } else {
       return null
     }
@@ -193,7 +190,7 @@ const SingleLotInfo = (props: IProps) => {
           </Text>
 
           <View style={styles.avatarRowContainer}>
-            {[...Array(parkingLot.freeLots).keys()].map((idx) => (
+            {[...Array(freeLots).keys()].map((idx) => (
               <View style={styles.avatarContainer} key={`empty-${idx}`}>
                 <Image
                   source={require("../../../assets/grey-avatar.png")}
@@ -203,48 +200,48 @@ const SingleLotInfo = (props: IProps) => {
                 <Text style={styles.timeText}></Text>
               </View>
             ))}
-            {[...Array(parkingLot.totalLots - parkingLot.freeLots).keys()].map(
-              (idx) => (
-                <View style={styles.avatarContainer} key={`occupied-${idx}`}>
-                  <Image
-                    source={require("../../../assets/man.png")}
-                    style={styles.avatar}
+            {[...Array(parkingLot.currUsers.length).keys()].map((idx) => (
+              <View style={styles.avatarContainer} key={`occupied-${idx}`}>
+                <Image
+                  source={require("../../../assets/man.png")}
+                  style={styles.avatar}
+                />
+                <Text>{parkingLot.currUsers[idx].username}</Text>
+                <Text style={styles.timeText}>
+                  Here since{"\n"}
+                  {getFormattedTime(idx)}
+                </Text>
+                {freeLots === 0 && !isUserParkingHere && (
+                  <Button
+                    title={"Swap"}
+                    onPress={() => handleSwap(parkingLot.currUsers[idx])}
+                    buttonStyle={{
+                      backgroundColor: colors.red,
+                    }}
                   />
-                  <Text>{parkingLot.currUsers[idx].username}</Text>
-                  <Text style={styles.timeText}>
-                    Here since{"\n"}
-                    {getFormattedTime(idx)}
-                  </Text>
-                  {parkingLot.freeLots === 0 && (
-                    <Button
-                      title={"Swap"}
-                      onPress={() => handleSwap(parkingLot.currUsers[idx])}
-                      buttonStyle={{
-                        backgroundColor: colors.red,
-                      }}
-                    />
-                  )}
-                </View>
-              )
-            )}
+                )}
+              </View>
+            ))}
           </View>
-          <Button
-            title={getBtnConfig().text}
-            buttonStyle={{
-              backgroundColor:
-                parkingLot.freeLots === 0 && !isUserParkingHere
-                  ? colors.grey4
-                  : colors.red,
-            }}
-            containerStyle={{
-              width: 200,
-              alignSelf: "center",
-            }}
-            titleStyle={{ color: "white", marginHorizontal: 20 }}
-            onPress={() => handlePark()}
-            disabled={getBtnConfig().disabled}
-            loading={parking}
-          />
+          {(isUserParkingHere || freeLots > 0) && (
+            <Button
+              title={getBtnConfig().text}
+              buttonStyle={{
+                backgroundColor:
+                  freeLots === 0 && !isUserParkingHere
+                    ? colors.grey4
+                    : colors.red,
+              }}
+              containerStyle={{
+                width: 200,
+                alignSelf: "center",
+              }}
+              titleStyle={{ color: "white", marginHorizontal: 20 }}
+              onPress={() => handlePark()}
+              disabled={getBtnConfig().disabled}
+              loading={parking}
+            />
+          )}
           <Dialog
             isVisible={visible}
             onBackdropPress={() => setVisible(!visible)}

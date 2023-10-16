@@ -20,7 +20,7 @@ import {
 } from "firebase/firestore"
 import { db } from "../firebase"
 import { AppContext } from "../context"
-import { userApi } from "../api/user"
+import { CommonActions, useNavigationState } from "@react-navigation/native"
 
 export interface Chatroom {
   id: string
@@ -34,35 +34,34 @@ export interface Chatroom {
 const ChatScreen = ({ route, navigation }) => {
   const [messages, setMessages] = useState<IMessage[]>([])
   const [chatroom, setChatroom] = useState<Chatroom>()
-  const { otherUser, chatroom: routeChatroom } = route.params
+  const { otherUser, chatroom: routeChatroom, fromMain } = route.params
   const { user } = useContext(AppContext)
 
-  // useEffect(() => {
-  //   setMessages([
-  //     {
-  //       _id: 1,
-  //       text: "Hello developer",
-  //       createdAt: new Date(),
-  //       user: {
-  //         _id: 2,
-  //         name: "React Native",
-  //         avatar: "https://placeimg.com/140/140/any",
-  //       },
-  //     },
-  //     {
-  //       _id: 2,
-  //       text: "Hello world",
-  //       createdAt: new Date(),
-  //       user: {
-  //         _id: 1,
-  //         name: "React Native",
-  //         avatar: "https://placeimg.com/140/140/any",
-  //       },
-  //     },
-  //   ])
-  // }, [])
-
   useEffect(() => {
+    if (fromMain) {
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 1,
+          key: "stack-GwJZvGnfKAN5vZyIwCQUb",
+          routeNames: ["ChatList", "Chat"],
+          routes: [
+            {
+              key: "ChatList-8aJHCorMvvCykR-GztjWR",
+              name: "ChatList",
+              params: undefined,
+            },
+            {
+              key: "Chat-ZMXBqBZe-zvmjDrc5BJP4",
+              name: "Chat",
+              params: route.params,
+              path: undefined,
+            },
+          ],
+          stale: false,
+          type: "stack",
+        })
+      )
+    }
     const init = async () => {
       if (user) {
         let chatroomId = ""
@@ -137,7 +136,7 @@ const ChatScreen = ({ route, navigation }) => {
     }
 
     init()
-  }, [otherUser])
+  }, [])
 
   const onSend = async (messages: IMessage[] = []) => {
     if (chatroom) {

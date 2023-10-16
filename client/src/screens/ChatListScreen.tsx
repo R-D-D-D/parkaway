@@ -29,29 +29,6 @@ const ChatListScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    // const init = async () => {
-    //   if (user) {
-    //     const chatroomQuery = query(
-    //       collection(db, "chatrooms"),
-    //       or(
-    //         where("userId", "==", user.id),
-    //         where("otherUserId", "==", user.id)
-    //       )
-    //     )
-    //     const querySnapshot = await getDocs(chatroomQuery)
-    //     const fetchedChatrooms: Chatroom[] = []
-    //     if (querySnapshot.size > 0) {
-    //       querySnapshot.forEach((doc) => {
-    //         // doc.data() is never undefined for query doc snapshots
-    //         fetchedChatrooms.push({ ...doc.data(), id: doc.id } as Chatroom)
-    //       })
-    //     }
-    //     setChatrooms(fetchedChatrooms)
-    //     setLoading(false)
-    //   }
-    // }
-
-    // init()
     if (user) {
       const q = query(
         collection(db, "chatrooms"),
@@ -90,7 +67,6 @@ const ChatListScreen = ({ navigation }) => {
                 (docSnapshot) => docSnapshot.data()
               )
               chatroom.messages = newMessages
-              console.log("message changed")
 
               setChatrooms((prevChatrooms) =>
                 prevChatrooms.map((room) =>
@@ -115,10 +91,6 @@ const ChatListScreen = ({ navigation }) => {
       })
     }
   }, [user])
-
-  // useEffect(() => {
-  //   console.log("chatrooms asdf", chatrooms[0]?.messages[0]?.createdAt)
-  // }, [chatrooms])
 
   if (loading) {
     return <Spinner />
