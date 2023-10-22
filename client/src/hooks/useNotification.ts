@@ -13,14 +13,19 @@ import { ParkingLot } from "../api/parking_lot"
 export default function useNotification() {
   const broadcastLeavingAction = async (
     user: IUser,
-    parkingLot: ParkingLot
+    parkingLot: ParkingLot,
+    type: NotificationType
   ) => {
+    const isLeaving = type === NotificationType.USER_LEAVING
     addDoc(collection(db, "broadcast_notifications"), {
-      title: "A lot is available!",
-      description: `User ${user?.username} is leaving lot ${parkingLot.lotName}, click to book the lot`,
+      title: isLeaving ? "A user is leaving soon!" : "A lot is available!",
+      description: `User ${user?.username} ${
+        isLeaving ? "is leaving" : "has left"
+      } lot ${parkingLot.lotName}`,
       originUser: user,
       parkingLotId: parkingLot.id,
-      type: NotificationType.LOT_AVAILABLE,
+      officeName: parkingLot.officeName,
+      type,
       createdAt: serverTimestamp(),
     })
   }

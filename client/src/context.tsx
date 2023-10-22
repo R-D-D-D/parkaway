@@ -4,6 +4,7 @@ import { SigninInfo, SignupInfo } from "./screens/LogInScreen"
 import { ParkingLot, parkingApi } from "./api/parking_lot"
 import { auth } from "./firebase"
 import { useAuthState } from "react-firebase-hooks/auth"
+import { useDocument } from "react-firebase-hooks/firestore"
 import { GoogleAuthProvider, signInWithRedirect, User } from "firebase/auth"
 import { useQuery } from "@tanstack/react-query"
 import { Notifier, Easing } from "react-native-notifier"
@@ -24,11 +25,16 @@ import {
   updateDoc,
   Timestamp,
   serverTimestamp,
+  DocumentSnapshot,
+  DocumentReference,
 } from "firebase/firestore"
 import { db } from "./firebase"
 import { useNavigation } from "@react-navigation/native"
 import useNotification from "./hooks/useNotification"
 import dayjs from "dayjs"
+import MapView from "react-native-maps"
+import { LAT_DELTA, LNG_DELTA } from "./screens/HomeScreen"
+import { Subscription } from "./api/subscription"
 
 export interface IUser {
   username: string
@@ -39,25 +45,14 @@ export interface IUser {
   id: number
 }
 
-interface IContext {
-  // user: User | null | undefined
-  user: IUser | null
-  setUser: (user: IUser | null) => void
-  parkingActions: ParkingAction[]
-  setParkingActions: (actions: ParkingAction[]) => void
-  parkingLots: ParkingLot[]
-  setParkingLots: (lots: ParkingLot[]) => void
-  calloutShown: number | null
-  setCalloutShown: (callout: number | null) => void
-}
-
 type IProps = {
   children: JSX.Element
 }
 
 export enum NotificationType {
   SWAP_REQUEST = 1,
-  LOT_AVAILABLE,
+  USER_LEFT,
+  USER_LEAVING,
 }
 
 export interface INotification {
@@ -86,6 +81,21 @@ export interface IBroadcastRead {
   createdAt: Timestamp | null
 }
 
+interface IContext {
+  // user: User | null | undefined
+  user: IUser | null
+  setUser: (user: IUser | null) => void
+  parkingActions: ParkingAction[]
+  setParkingActions: (actions: ParkingAction[]) => void
+  parkingLots: ParkingLot[]
+  setParkingLots: (lots: ParkingLot[]) => void
+  calloutShown: string | null
+  setCalloutShown: (callout: string | null) => void
+  map: MapView | null
+  setMap: (map: MapView) => void
+  subscriptions: Subscription | undefined
+}
+
 export const AppContext = createContext<IContext>({
   user: null,
   setUser: (user: IUser | null) => {},
@@ -94,7 +104,10 @@ export const AppContext = createContext<IContext>({
   parkingLots: [],
   setParkingLots: (lots: ParkingLot[]) => {},
   calloutShown: null,
-  setCalloutShown: (callout: null | number) => {},
+  setCalloutShown: (callout: null | string) => {},
+  map: null,
+  setMap: (map: MapView | null) => {},
+  subscriptions: undefined,
 })
 
 export const AppContextProvider = ({ children }: IProps) => {
@@ -110,7 +123,21 @@ export const AppContextProvider = ({ children }: IProps) => {
   )
   const { markIndividualNotiAsSeen, updateBroadcastReadTime } =
     useNotification()
-  const [calloutShown, setCalloutShown] = useState<number | null>(null)
+  const [calloutShown, setCalloutShown] = useState<string | null>(null)
+  const [map, setMap] = useState<MapView | null>(null)
+
+  const converter = {
+    toFirestore: (data: User) => data,
+    fromFirestore: (snap: DocumentSnapshot) => snap.data() as O<Subscription>,
+  }
+
+  const [subscriptions] = useDocument<Subscription>(
+    doc(
+      db,
+      "subscriptions",
+      String(user?.id)
+    ) as DocumentReference<Subscription>
+  )
   const navigation = useNavigation()
 
   useEffect(() => {
@@ -189,21 +216,36 @@ export const AppContextProvider = ({ children }: IProps) => {
     // console.log("broadcastRead1: ", broadcastRead)
     if (broadcastRead && broadcastRead.readUntil) {
       // console.log("broadcastRead2: ", broadcastRead)
-      const broadcastNotificationsQuery = query(
-        collection(db, "broadcast_notifications"),
-        and(
-          where(
-            "createdAt",
-            ">=",
-            Timestamp.fromDate(broadcastRead.readUntil.toDate())
-          ),
-          where(
-            "createdAt",
-            ">=",
-            Timestamp.fromDate(dayjs().subtract(10, "minute").toDate())
+      let broadcastNotificationsQuery
+
+      const officeNames = subscriptions?.data()?.offices.map((o) => o.name)
+      if (Array.isArray(officeNames) && officeNames.length > 0) {
+        broadcastNotificationsQuery = query(
+          collection(db, "broadcast_notifications"),
+          and(
+            where(
+              "createdAt",
+              ">=",
+              Timestamp.fromDate(broadcastRead.readUntil.toDate())
+            ),
+            where(
+              "createdAt",
+              ">=",
+              Timestamp.fromDate(dayjs().subtract(1, "minute").toDate())
+            ),
+            where("officeName", "in", officeNames)
           )
         )
-      )
+      } else {
+        broadcastNotificationsQuery = query(
+          collection(db, "broadcast_notifications"),
+          where(
+            "createdAt",
+            ">=",
+            Timestamp.fromDate(dayjs().add(1, "day").toDate())
+          )
+        )
+      }
 
       const unsubscribe = onSnapshot(
         broadcastNotificationsQuery,
@@ -226,10 +268,10 @@ export const AppContextProvider = ({ children }: IProps) => {
       )
       return () => unsubscribe()
     }
-  }, [broadcastRead])
+  }, [broadcastRead, subscriptions])
 
   useEffect(() => {
-    if (user) {
+    if (user && map) {
       if (notifications.length > 0) {
         for (const noti of notifications) {
           if (noti.type === NotificationType.SWAP_REQUEST) {
@@ -260,7 +302,11 @@ export const AppContextProvider = ({ children }: IProps) => {
       }
       if (broadcastNotifications.length > 0) {
         for (const noti of broadcastNotifications) {
-          if (noti.type === NotificationType.LOT_AVAILABLE) {
+          if (
+            noti.type === NotificationType.USER_LEFT ||
+            noti.type === NotificationType.USER_LEAVING
+          ) {
+            const lot = parkingLots.find((lot) => lot.id === noti.parkingLotId)
             Notifier.showNotification({
               title: noti.title,
               description: noti.description,
@@ -273,6 +319,15 @@ export const AppContextProvider = ({ children }: IProps) => {
               onPress: () => {
                 updateBroadcastReadTime(user)
                 navigation.navigate("Home")
+                if (lot && map) {
+                  map.animateToRegion({
+                    latitude: lot.latitude,
+                    longitude: lot.longitude,
+                    latitudeDelta: LAT_DELTA,
+                    longitudeDelta: LNG_DELTA,
+                  })
+                  setCalloutShown(lot.id)
+                }
               },
               hideOnPress: true,
               queueMode: "standby",
@@ -281,7 +336,7 @@ export const AppContextProvider = ({ children }: IProps) => {
         }
       }
     }
-  }, [notifications, broadcastNotifications])
+  }, [notifications, broadcastNotifications, map])
 
   return (
     <AppContext.Provider
@@ -294,6 +349,9 @@ export const AppContextProvider = ({ children }: IProps) => {
         setParkingLots,
         calloutShown,
         setCalloutShown,
+        map,
+        setMap,
+        subscriptions: subscriptions?.data(),
       }}
     >
       {children}

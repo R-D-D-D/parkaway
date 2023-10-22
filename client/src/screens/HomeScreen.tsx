@@ -10,13 +10,13 @@ import MapView, {
   PROVIDER_GOOGLE,
   Marker,
   Callout,
-  CalloutSubview,
   MapPressEvent,
   MapMarker,
+  Polygon,
 } from "react-native-maps"
 import { mapStyle } from "../global/mapStyle"
 import * as Location from "expo-location"
-import { useEffect, useRef, useState, useContext } from "react"
+import { useEffect, useRef, useState, useContext, useMemo } from "react"
 import { Tooltip, Button } from "react-native-elements"
 import CustomMarker from "../components/Marker"
 import Panel, { PanelType } from "../components/Panel/Panel"
@@ -31,9 +31,10 @@ import { ParkingAction, parkingActionApi } from "../api/parking_action"
 import FloatingMenuBtn from "../components/FloatingMenuButton"
 import { showToast } from "../utils/toast"
 import Spinner from "../components/Spinner"
+import { isPointInPolygon } from "geolib"
 
-const LAT_DELTA = 0.005
-const LNG_DELTA = 0.0025
+export const LAT_DELTA = 0.005
+export const LNG_DELTA = 0.0025
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -41,15 +42,13 @@ type HomeScreenNavigationProp = NativeStackNavigationProp<
 >
 
 const HomeScreen = ({ navigation }) => {
-  const [map, setMap] = useState<MapView | null>(null)
   // coordinate of the current user
   const [latLng, setLatLng] = useState<{
     latitude: number
     longitude: number
   } | null>(null)
-  let markerRefs = useRef<MapMarker[]>([])
-  const [parkedAt, setParkedAt] = useState<string | null>(null)
-  const { user, parkingLots, parkingActions, calloutShown, setCalloutShown } =
+  let markerRefs = useRef<Map<string, MapMarker>>(new Map())
+  const { user, parkingLots, calloutShown, setCalloutShown, map, setMap } =
     useContext(AppContext)
   // const navigation = useNavigation<HomeScreenNavigationProp>()
   const isFocused = useIsFocused()
@@ -58,10 +57,19 @@ const HomeScreen = ({ navigation }) => {
     latitude: number
   } | null>(null)
   const [isAdminEditing, setIsAdminEditing] = useState(false)
-  const [rerenderMarkersFlag, triggerRerenderMarkers] = useState(false)
   const [isTestMode, setIsTestMode] = useState(false)
   const [mapReady, setMapReady] = useState(false)
   const dataReady = true
+  const [officeSelected, setOfficeSelected] = useState<
+    [string, ParkingLot[]] | null
+  >(null)
+  const panelDisplayed: PanelType = officeSelected
+    ? PanelType.OFFICE_INFO
+    : newParkingLot
+    ? PanelType.EDIT_PARKING_LOT
+    : calloutShown
+    ? PanelType.SINGLE_LOT_INFO
+    : PanelType.ALL_LOTS_INFO
 
   const handleCenter = () => {
     if (latLng && map) {
@@ -101,27 +109,6 @@ const HomeScreen = ({ navigation }) => {
     } = await Location.getCurrentPositionAsync({})
     setLatLng({ latitude, longitude })
   }
-
-  useEffect(() => {
-    let userParkedFlag = false
-    parkingLots.forEach((lot) => {
-      if (lot.currUsers.findIndex((u) => u.id === user?.id) >= 0) {
-        setParkedAt(lot.id)
-        userParkedFlag = true
-      }
-    })
-    if (!userParkedFlag) setParkedAt(null)
-    const resetMarker = async () => {
-      setCalloutShown(null)
-      triggerRerenderMarkers(!rerenderMarkersFlag)
-      await wait(10)
-      if (calloutShown !== null && markerRefs.current[calloutShown]) {
-        markerRefs.current[calloutShown].showCallout()
-      }
-    }
-
-    resetMarker()
-  }, [parkingLots])
 
   useEffect(() => {
     const init = async () => {
@@ -177,54 +164,79 @@ const HomeScreen = ({ navigation }) => {
     }
   }
 
-  const getPincolor = (lot: ParkingLot) => {
-    if (parkedAt === lot.id) {
-      return undefined
-    } else {
-      return lot.totalLots - lot.currUsers.length === 0 ? "red" : "green"
-    }
-  }
-
-  return (
-    <View style={styles.container}>
-      {latLng !== null && user && (
-        <View style={{ alignItems: "center", justifyContent: "center" }}>
-          <MapView
-            // onUserLocationChange={onUserLocationChange}
-            provider={PROVIDER_GOOGLE}
-            style={styles.map}
-            customMapStyle={mapStyle}
-            showsUserLocation={true}
-            followsUserLocation={true}
-            ref={(map) => setMap(map)}
-            region={{
-              latitude: latLng.latitude,
-              longitude: latLng.longitude,
-              latitudeDelta: LAT_DELTA,
-              longitudeDelta: LNG_DELTA,
-            }}
-            onPress={(e: MapPressEvent) => {
-              if (e.nativeEvent.action !== "marker-press") {
-                setCalloutShown(null)
-              }
-              if (isAdminEditing) {
-                handleNewParkingLot(e)
-              }
-            }}
-            onMapReady={() => setMapReady(true)}
-          >
-            {parkingLots.map((lot, idx) => (
+  const renderedMap = useMemo(() => {
+    if (latLng) {
+      setCalloutShown(null)
+      const offices = new Map<string, ParkingLot[]>()
+      for (const lot of parkingLots) {
+        const officeLots = offices.get(lot.officeName)
+        if (officeLots) {
+          offices.set(lot.officeName, [
+            ...officeLots,
+            JSON.parse(JSON.stringify(lot)),
+          ])
+        } else {
+          offices.set(lot.officeName, [JSON.parse(JSON.stringify(lot))])
+        }
+      }
+      return (
+        <MapView
+          // onUserLocationChange={onUserLocationChange}
+          provider={PROVIDER_GOOGLE}
+          style={styles.map}
+          customMapStyle={mapStyle}
+          showsUserLocation={true}
+          followsUserLocation={true}
+          ref={(map) => {
+            if (map) setMap(map)
+          }}
+          region={{
+            latitude: latLng.latitude,
+            longitude: latLng.longitude,
+            latitudeDelta: LAT_DELTA,
+            longitudeDelta: LNG_DELTA,
+          }}
+          onPress={(e: MapPressEvent) => {
+            if (
+              e.nativeEvent.action !== "marker-press" &&
+              e.nativeEvent.action !== "polygon-press"
+            ) {
+              setCalloutShown(null)
+              setOfficeSelected(null)
+            }
+            if (isAdminEditing) {
+              handleNewParkingLot(e)
+            }
+          }}
+          onMapReady={() => setMapReady(true)}
+        >
+          {parkingLots.map((lot) => {
+            const isUserParkingHere = lot.currUsers
+              .map((user) => user.id)
+              .includes(user?.id || 0)
+            return (
               <Marker
                 coordinate={{
                   latitude: lot.latitude,
                   longitude: lot.longitude,
                 }}
-                key={`${lot.id}${rerenderMarkersFlag}`}
-                pinColor={getPincolor(lot)}
-                ref={(el) => (markerRefs.current[idx] = el)}
-                onPress={() => setCalloutShown(idx)}
+                key={`${lot.id}-${Date.now()}`}
+                pinColor={
+                  lot.totalLots - lot.currUsers.length === 0 ? "red" : "green"
+                }
+                ref={(el) => {
+                  if (calloutShown === lot.id) {
+                    markerRefs.current.get(lot.id)?.hideCallout()
+                  }
+                  el && markerRefs.current.set(lot.id, el)
+                  el && el.showCallout()
+                }}
+                onPress={() => {
+                  setCalloutShown(lot.id)
+                  setOfficeSelected(null)
+                }}
               >
-                {parkedAt === lot.id && (
+                {isUserParkingHere && (
                   <Image
                     source={require("../../assets/car_side_view.png")}
                     style={styles.parkingImg}
@@ -237,30 +249,56 @@ const HomeScreen = ({ navigation }) => {
                   />
                 </Callout>
               </Marker>
-            ))}
-            {newParkingLot && (
-              <Marker
-                coordinate={{
-                  latitude: newParkingLot.latitude,
-                  longitude: newParkingLot.longitude,
-                }}
-                key={"new-parking-lot"}
-                pinColor={"grey"}
-              >
-                {/* <Image
-                        source={require("../../assets/leave-action.png")}
-                        style={styles.parkingImg}
-                      /> */}
-              </Marker>
-            )}
-          </MapView>
+            )
+          })}
+          {newParkingLot && (
+            <Marker
+              coordinate={{
+                latitude: newParkingLot.latitude,
+                longitude: newParkingLot.longitude,
+              }}
+              key={`new-parking-lot-${Date.now()}`}
+              pinColor={"grey"}
+            ></Marker>
+          )}
+          {!isAdminEditing &&
+            [...offices].map((keyValue) => {
+              return (
+                <Polygon
+                  coordinates={keyValue[1].map((lot) => ({
+                    latitude: lot.latitude,
+                    longitude: lot.longitude,
+                  }))}
+                  fillColor="rgba(39, 213, 245, 0.20)"
+                  strokeColor="#FFFFFF"
+                  onPress={() => {
+                    if (!isAdminEditing) {
+                      setOfficeSelected(keyValue)
+                      setCalloutShown(null)
+                    }
+                  }}
+                  tappable
+                  key={`polygon-${keyValue[1][0].officeName}-${Date.now()}`}
+                />
+              )
+            })}
+        </MapView>
+      )
+    }
+  }, [parkingLots, latLng, newParkingLot, isAdminEditing])
+
+  return (
+    <View style={styles.container}>
+      {latLng !== null && user && (
+        <View style={{ alignItems: "center", justifyContent: "center" }}>
+          {renderedMap}
+
           <FloatingMenuBtn style={styles.recenterBtn} onPress={handleCenter}>
             <Image
               source={require("../../assets/navigation.png")}
               style={styles.floatingBtnImg}
             />
           </FloatingMenuBtn>
-
           {user.isAdmin ? (
             <FloatingMenuBtn style={styles.adminEditBtn} onPress={handleEdit}>
               {isAdminEditing ? (
@@ -290,18 +328,11 @@ const HomeScreen = ({ navigation }) => {
             )}
           </FloatingMenuBtn>
           <Panel
-            type={
-              calloutShown === null
-                ? PanelType.AllLotsInfo
-                : PanelType.SingleLotInfo
-            }
-            isAdminEditing={isAdminEditing}
+            type={panelDisplayed}
             handleCreateParkingLot={handleCreateParkingLot}
             newParkingLot={newParkingLot}
-            calloutShown={calloutShown}
-            parkingLots={parkingLots}
-            parkingActions={parkingActions}
             isTestMode={isTestMode}
+            office={officeSelected}
           />
         </View>
       )}
