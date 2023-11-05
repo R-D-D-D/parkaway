@@ -1,7 +1,6 @@
 import { StatusBar } from "expo-status-bar"
 import { StyleSheet, Text, View, Dimensions } from "react-native"
 import { colors, parameters } from "./src/global/styles"
-import HomeScreen from "./src/screens/HomeScreen.1"
 import * as SplashScreen from "expo-splash-screen"
 import * as Font from "expo-font"
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -13,6 +12,8 @@ import { NotifierWrapper } from "react-native-notifier"
 import { GestureHandlerRootView } from "react-native-gesture-handler"
 import { Button } from "react-native-elements"
 import { NavigationContainer } from "@react-navigation/native"
+import { BottomSheetModalProvider } from "@gorhom/bottom-sheet"
+import AppWrapper from "./src/AppWrapper"
 
 const SCREEN_WIDTH = Dimensions.get("window").width
 SplashScreen.preventAutoHideAsync()
@@ -62,9 +63,11 @@ const App = () => {
           <GestureHandlerRootView style={{ flex: 1 }}>
             <NotifierWrapper>
               <AppContextProvider>
-                <View style={styles.container} onLayout={onLayoutRootView}>
-                  <RootStack />
-                </View>
+                <BottomSheetModalProvider>
+                  <View style={styles.container} onLayout={onLayoutRootView}>
+                    <AppWrapper />
+                  </View>
+                </BottomSheetModalProvider>
               </AppContextProvider>
             </NotifierWrapper>
           </GestureHandlerRootView>

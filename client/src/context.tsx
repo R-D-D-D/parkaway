@@ -1,10 +1,14 @@
-import { createContext, useEffect, useState } from "react"
+import { createContext, useCallback, useEffect, useMemo, useState } from "react"
 import { ParkingAction, parkingActionApi } from "./api/parking_action"
 import { SigninInfo, SignupInfo } from "./screens/LogInScreen"
 import { ParkingLot, parkingApi } from "./api/parking_lot"
 import { auth } from "./firebase"
 import { useAuthState } from "react-firebase-hooks/auth"
-import { useDocument } from "react-firebase-hooks/firestore"
+import {
+  useCollection,
+  useCollectionData,
+  useDocument,
+} from "react-firebase-hooks/firestore"
 import { GoogleAuthProvider, signInWithRedirect, User } from "firebase/auth"
 import { useQuery } from "@tanstack/react-query"
 import { Notifier, Easing } from "react-native-notifier"
@@ -27,14 +31,22 @@ import {
   serverTimestamp,
   DocumentSnapshot,
   DocumentReference,
+  CollectionReference,
 } from "firebase/firestore"
 import { db } from "./firebase"
 import { useNavigation } from "@react-navigation/native"
-import useNotification from "./hooks/useNotification"
+import useNotification, {
+  IBottomsheetNotification,
+  IBroadcastNotification,
+  IBroadcastRead,
+  INotification,
+  NotificationType,
+} from "./hooks/useNotification"
 import dayjs from "dayjs"
-import MapView from "react-native-maps"
+import MapView, { LatLng } from "react-native-maps"
 import { LAT_DELTA, LNG_DELTA } from "./screens/HomeScreen"
 import { Subscription } from "./api/subscription"
+import { IBooking } from "./hooks/useBooking"
 
 export interface IUser {
   username: string
@@ -47,38 +59,6 @@ export interface IUser {
 
 type IProps = {
   children: JSX.Element
-}
-
-export enum NotificationType {
-  SWAP_REQUEST = 1,
-  USER_LEFT,
-  USER_LEAVING,
-}
-
-export interface INotification {
-  id: string
-  title: string
-  description: string
-  receiveUser: IUser
-  originUser: IUser
-  isChecked: boolean
-  type: NotificationType
-}
-
-export interface IBroadcastNotification {
-  id: string
-  title: string
-  description: string
-  originUser: IUser
-  type: NotificationType
-  parkingLotId: string
-  createdAt: Timestamp | null
-}
-
-export interface IBroadcastRead {
-  user: IUser
-  readUntil: Timestamp | null
-  createdAt: Timestamp | null
 }
 
 interface IContext {
@@ -94,6 +74,11 @@ interface IContext {
   map: MapView | null
   setMap: (map: MapView) => void
   subscriptions: Subscription | undefined
+  userLocation: LatLng
+  setUserLocation: (location: LatLng) => void
+  bookings: IBooking[] | undefined
+  hasUserBooked: boolean
+  notificationQueue: IBottomsheetNotification[]
 }
 
 export const AppContext = createContext<IContext>({
@@ -108,6 +93,11 @@ export const AppContext = createContext<IContext>({
   map: null,
   setMap: (map: MapView | null) => {},
   subscriptions: undefined,
+  userLocation: { latitude: 0, longitude: 0 },
+  setUserLocation: (location: LatLng) => {},
+  bookings: undefined,
+  hasUserBooked: false,
+  notificationQueue: [],
 })
 
 export const AppContextProvider = ({ children }: IProps) => {
@@ -125,11 +115,64 @@ export const AppContextProvider = ({ children }: IProps) => {
     useNotification()
   const [calloutShown, setCalloutShown] = useState<string | null>(null)
   const [map, setMap] = useState<MapView | null>(null)
+  const [userLocation, setUserLocation] = useState<LatLng>({
+    longitude: 0,
+    latitude: 0,
+  })
+  const [notificationQueue, setNotificationQueue] = useState<
+    IBottomsheetNotification[]
+  >([])
 
-  const converter = {
-    toFirestore: (data: User) => data,
-    fromFirestore: (snap: DocumentSnapshot) => snap.data() as O<Subscription>,
+  const enqueueNotificationQueue = (element: IBottomsheetNotification) => {
+    setNotificationQueue((prevQueue) => {
+      const copy = [...prevQueue, element]
+      console.log("enqueue called prev:", prevQueue)
+
+      return copy
+    })
   }
+
+  const dequeueNotificationQueue = (): void => {
+    setNotificationQueue((prevQueue) => {
+      const copy = [...prevQueue]
+      console.log("dequeue called copy:", copy)
+      const dequeuedItem = copy.shift()
+      console.log("dequeue called dequeuedItem:", dequeuedItem)
+
+      if (dequeuedItem) {
+        return copy
+      } else {
+        return prevQueue
+      }
+    })
+  }
+
+  useEffect(() => {
+    console.log("queue:", notificationQueue)
+  }, [notificationQueue])
+
+  const [bookings] = useCollectionData<IBooking>(
+    collection(db, "bookings") as CollectionReference<IBooking, IBooking>
+  )
+
+  const filteredBookings = useMemo(
+    () =>
+      bookings
+        ? bookings.filter((booking) =>
+            dayjs().isBefore(
+              dayjs(booking.createdAt?.toDate()).add(10, "minute")
+            )
+          )
+        : [],
+    [bookings]
+  )
+
+  const hasUserBooked = useMemo(
+    () =>
+      filteredBookings.findIndex((booking) => booking.user.id === user?.id) >
+      -1,
+    [user, filteredBookings]
+  )
 
   const [subscriptions] = useDocument<Subscription>(
     doc(
@@ -260,10 +303,7 @@ export const AppContextProvider = ({ children }: IProps) => {
           fetchedNotifications = fetchedNotifications.filter(
             (x) => String(x.originUser.id) !== String(user?.id)
           )
-          const needReplace = !fetchedNotifications.every((el) => {
-            return broadcastNotifications.map((noti) => noti.id).includes(el.id)
-          })
-          if (needReplace) setBroadcastNotifications(fetchedNotifications)
+          setBroadcastNotifications(fetchedNotifications)
         }
       )
       return () => unsubscribe()
@@ -301,22 +341,23 @@ export const AppContextProvider = ({ children }: IProps) => {
         }
       }
       if (broadcastNotifications.length > 0) {
+        console.log("broadcastNotifications", broadcastNotifications)
         for (const noti of broadcastNotifications) {
           if (
-            noti.type === NotificationType.USER_LEFT ||
-            noti.type === NotificationType.USER_LEAVING
+            (noti.type === NotificationType.USER_LEFT ||
+              noti.type === NotificationType.USER_LEAVING) &&
+            notificationQueue.findIndex((n) => n.id === noti.id) === -1
           ) {
             const lot = parkingLots.find((lot) => lot.id === noti.parkingLotId)
-            Notifier.showNotification({
+            enqueueNotificationQueue({
+              id: noti.id,
               title: noti.title,
               description: noti.description,
-              duration: 5000,
-              showAnimationDuration: 800,
-              showEasing: Easing.bounce,
-              onHidden: () => {
+              onCancel: () => {
+                dequeueNotificationQueue()
                 updateBroadcastReadTime(user)
               },
-              onPress: () => {
+              onConfirm: () => {
                 updateBroadcastReadTime(user)
                 navigation.navigate("Home")
                 if (lot && map) {
@@ -329,9 +370,32 @@ export const AppContextProvider = ({ children }: IProps) => {
                   setCalloutShown(lot.id)
                 }
               },
-              hideOnPress: true,
-              queueMode: "standby",
             })
+            //   Notifier.showNotification({
+            //     title: noti.title,
+            //     description: noti.description,
+            //     duration: 5000,
+            //     showAnimationDuration: 800,
+            //     showEasing: Easing.bounce,
+            //     onHidden: () => {
+            //       updateBroadcastReadTime(user)
+            //     },
+            //     onPress: () => {
+            //       updateBroadcastReadTime(user)
+            //       navigation.navigate("Home")
+            //       if (lot && map) {
+            //         map.animateToRegion({
+            //           latitude: lot.latitude,
+            //           longitude: lot.longitude,
+            //           latitudeDelta: LAT_DELTA,
+            //           longitudeDelta: LNG_DELTA,
+            //         })
+            //         setCalloutShown(lot.id)
+            //       }
+            //     },
+            //     hideOnPress: true,
+            //     queueMode: "standby",
+            //   })
           }
         }
       }
@@ -352,6 +416,11 @@ export const AppContextProvider = ({ children }: IProps) => {
         map,
         setMap,
         subscriptions: subscriptions?.data(),
+        userLocation,
+        setUserLocation,
+        bookings: filteredBookings,
+        hasUserBooked,
+        notificationQueue,
       }}
     >
       {children}

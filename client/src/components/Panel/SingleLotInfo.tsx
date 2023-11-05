@@ -1,9 +1,15 @@
 import { StyleSheet, Text, View, Alert } from "react-native"
-import React, { useCallback, useContext, useEffect, useState } from "react"
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react"
 import { Image, Button, Dialog } from "react-native-elements"
 import { SCREEN_HEIGHT, SCREEN_WIDTH, colors } from "../../global/styles"
 import { ParkingLot } from "../../api/parking_lot"
-import { AppContext, IUser, NotificationType } from "../../context"
+import { AppContext, IUser } from "../../context"
 import { ParkingAction, parkingActionApi } from "../../api/parking_action"
 import { getDistance } from "geolib"
 import * as Location from "expo-location"
@@ -15,8 +21,11 @@ import { useNavigation } from "@react-navigation/native"
 import { twilioApi } from "../../api/twilio"
 import { serverTimestamp, Timestamp } from "firebase/firestore"
 import { Notifier, Easing } from "react-native-notifier"
-import useNotification from "../../hooks/useNotification"
+import useNotification, { NotificationType } from "../../hooks/useNotification"
 import Icon, { IconType } from "react-native-dynamic-vector-icons"
+import useBooking from "../../hooks/useBooking"
+import { CountdownTimer, FlipNumber } from "react-native-flip-countdown-timer"
+import dayjs from "dayjs"
 
 type SingleLotNavigationProp = NativeStackNavigationProp<
   ChatStackParamList,
@@ -32,7 +41,8 @@ interface IProps {
 const SingleLotInfo = (props: IProps) => {
   // console.log("[SingleLotInfo] props:", props)
   const { parkingLots, isTestMode, parkingActions } = props
-  const { user, calloutShown } = useContext(AppContext)
+  const { user, calloutShown, userLocation, bookings, hasUserBooked } =
+    useContext(AppContext)
   const [parking, setParking] = useState(false)
   const navigation = useNavigation<SingleLotNavigationProp>()
   const [visible, setVisible] = useState(false)
@@ -40,8 +50,33 @@ const SingleLotInfo = (props: IProps) => {
   const [otherUser, setOtherUser] = useState<IUser | null>(null)
   const { broadcastLeavingAction, createSwapRequestNotification } =
     useNotification()
+  const { createBooking } = useBooking()
 
   const parkingLot = parkingLots.find((lot) => lot.id === calloutShown)
+  const bookingsLength = bookings ? bookings.length : 0
+  const isUserNear = useMemo(() => {
+    if (parkingLot) {
+      const { latitude, longitude } = userLocation
+      return (
+        getDistance(
+          { latitude, longitude },
+          {
+            latitude: parkingLot.latitude,
+            longitude: parkingLot.longitude,
+          }
+        ) < 20
+      )
+    } else {
+      return false
+    }
+  }, [userLocation])
+
+  const currBookings = useMemo(() => {
+    return parkingLot && bookings
+      ? bookings.filter((booking) => booking.parkingLotId === parkingLot.id)
+      : []
+  }, [bookings, parkingLot])
+
   if (parkingLot) {
     const lotParkingActions = parkingActions.filter(
       (action) => action.parkingLot.id === parkingLot.id
@@ -146,6 +181,12 @@ const SingleLotInfo = (props: IProps) => {
       }
     }
 
+    const handleBook = async () => {
+      if (user) {
+        await createBooking(user, parkingLot)
+      }
+    }
+
     const getBtnConfig = useCallback(() => {
       if (isUserParkingHere) {
         return {
@@ -163,12 +204,19 @@ const SingleLotInfo = (props: IProps) => {
           disabled: true,
         }
       } else {
-        return {
-          text: "Park",
-          disabled: false,
+        if (isUserNear || isTestMode) {
+          return {
+            text: "Park",
+            disabled: false,
+          }
+        } else {
+          return {
+            text: "Park",
+            disabled: true,
+          }
         }
       }
-    }, [parkingLots, calloutShown, user])
+    }, [parkingLots, calloutShown, user, isUserNear, isTestMode])
 
     const getFormattedTime = (idx: number) => {
       const parkingAction = lotParkingActions.find(
@@ -190,7 +238,7 @@ const SingleLotInfo = (props: IProps) => {
             </Text>
 
             <View style={styles.avatarRowContainer}>
-              {[...Array(freeLots).keys()].map((idx) => (
+              {[...Array(freeLots - currBookings.length).keys()].map((idx) => (
                 <View style={styles.avatarContainer} key={`empty-${idx}`}>
                   <Image
                     source={require("../../../assets/grey-avatar.png")}
@@ -198,6 +246,45 @@ const SingleLotInfo = (props: IProps) => {
                   />
                   <Text>Available</Text>
                   <Text style={styles.timeText}></Text>
+                </View>
+              ))}
+              {currBookings.map((booking) => (
+                <View
+                  style={styles.avatarContainer}
+                  key={`booking-${booking.createdAt}`}
+                >
+                  <Image
+                    source={require("../../../assets/man.png")}
+                    style={styles.avatar}
+                  />
+                  {booking.createdAt &&
+                    (`${booking.user.id}` === `${user?.id}` ? (
+                      <>
+                        <Text>Booking expires</Text>
+                        <Text style={styles.timeText}></Text>
+                        <Text>
+                          {formatDate(
+                            dayjs(booking.createdAt.toDate())
+                              .add(10, "minute")
+                              .toDate(),
+                            "HH:mm"
+                          )}
+                        </Text>
+                      </>
+                    ) : (
+                      <>
+                        <Text>Booked until</Text>
+                        <Text style={styles.timeText}></Text>
+                        <Text>
+                          {formatDate(
+                            dayjs(booking.createdAt.toDate())
+                              .add(10, "minute")
+                              .toDate(),
+                            "HH:mm"
+                          )}
+                        </Text>
+                      </>
+                    ))}
                 </View>
               ))}
               {[...Array(parkingLot.currUsers.length).keys()].map((idx) => (
@@ -223,6 +310,22 @@ const SingleLotInfo = (props: IProps) => {
                 </View>
               ))}
             </View>
+            {(!isUserNear || isTestMode) &&
+              !isUserParked &&
+              !hasUserBooked &&
+              freeLots - bookingsLength > 0 && (
+                <Button
+                  title={"Book"}
+                  onPress={() => handleBook()}
+                  buttonStyle={{
+                    backgroundColor: colors.red,
+                  }}
+                  containerStyle={{
+                    width: 200,
+                    alignSelf: "center",
+                  }}
+                />
+              )}
             {(isUserParkingHere || freeLots > 0) && (
               <View
                 style={{

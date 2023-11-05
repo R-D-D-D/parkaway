@@ -7,6 +7,7 @@ import {
 import React from "react"
 import { IUser } from "../context"
 import { db } from "../firebase"
+import { ParkingLot } from "../api/parking_lot"
 
 export interface IBooking {
   createdAt: Timestamp | null
@@ -16,11 +17,12 @@ export interface IBooking {
 }
 
 export default function useBooking() {
-  const createBooking = async (user: IUser, parkingLotId: string) => {
+  const createBooking = async (user: IUser, parkingLot: ParkingLot) => {
     await addDoc(collection(db, "bookings"), {
       createdAt: serverTimestamp(),
       user,
-      parkingLotId,
+      parkingLotId: parkingLot.id,
+      officeName: parkingLot.officeName,
     })
   }
 

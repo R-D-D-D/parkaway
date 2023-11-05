@@ -13,6 +13,7 @@ import MapView, {
   MapPressEvent,
   MapMarker,
   Polygon,
+  LatLng,
 } from "react-native-maps"
 import { mapStyle } from "../global/mapStyle"
 import * as Location from "expo-location"
@@ -31,7 +32,8 @@ import { ParkingAction, parkingActionApi } from "../api/parking_action"
 import FloatingMenuBtn from "../components/FloatingMenuButton"
 import { showToast } from "../utils/toast"
 import Spinner from "../components/Spinner"
-import { isPointInPolygon } from "geolib"
+import { getDistance, isPointInPolygon } from "geolib"
+import debounce from "lodash-es/debounce"
 
 export const LAT_DELTA = 0.005
 export const LNG_DELTA = 0.0025
@@ -48,8 +50,15 @@ const HomeScreen = ({ navigation }) => {
     longitude: number
   } | null>(null)
   let markerRefs = useRef<Map<string, MapMarker>>(new Map())
-  const { user, parkingLots, calloutShown, setCalloutShown, map, setMap } =
-    useContext(AppContext)
+  const {
+    user,
+    parkingLots,
+    calloutShown,
+    setCalloutShown,
+    map,
+    setMap,
+    setUserLocation,
+  } = useContext(AppContext)
   // const navigation = useNavigation<HomeScreenNavigationProp>()
   const isFocused = useIsFocused()
   const [newParkingLot, setNewParkingLot] = useState<{
@@ -63,6 +72,11 @@ const HomeScreen = ({ navigation }) => {
   const [officeSelected, setOfficeSelected] = useState<
     [string, ParkingLot[]] | null
   >(null)
+  // const [userLocation, setUserLocation] = useState<LatLng>({
+  //   longitude: 0,
+  //   latitude: 0,
+  // })
+
   const panelDisplayed: PanelType = officeSelected
     ? PanelType.OFFICE_INFO
     : newParkingLot
@@ -121,38 +135,12 @@ const HomeScreen = ({ navigation }) => {
     init()
   }, [isFocused])
 
-  // const onUserLocationChange = ({ nativeEvent }) => {
-  //   for (let i = 0; i < parkingLots.length; i++) {
-  //     const distance = getDistance(nativeEvent.coordinate, {
-  //       latitude: parkingLots[i].latitude,
-  //       longitude: parkingLots[i].longitude,
-  //     })
-  //     if (distance < 30 && calloutShown !== i) {
-  //       markerRefs[i].current.showCallout()
-  //       setCalloutShown(i)
-  //     }
-  //   }
-  // }
-
   const handleNewParkingLot = (e: MapPressEvent) => {
     setNewParkingLot({
       longitude: e.nativeEvent.coordinate.longitude,
       latitude: e.nativeEvent.coordinate.latitude,
     })
   }
-
-  // const resetParkingLots = async () => {
-  //   setCalloutShown(null)
-  //   const lots = (await parkingApi.listParkingLots()).data
-  //   const parkingActions = (await parkingActionApi.listParkingAction(20)).data
-  //   setParkingLots(lots)
-  //   setParkingActions(parkingActions)
-  //   triggerRerenderMarkers(!rerenderMarkersFlag)
-  //   await wait(10)
-  //   if (markerRefs.current[calloutShown] && calloutShown !== null) {
-  //     markerRefs.current[calloutShown].showCallout()
-  //   }
-  // }
 
   const handleCreateParkingLot = async (parkingLot: Omit<ParkingLot, "id">) => {
     try {
@@ -179,9 +167,14 @@ const HomeScreen = ({ navigation }) => {
           offices.set(lot.officeName, [JSON.parse(JSON.stringify(lot))])
         }
       }
+
+      const onUserLocationChange = ({ nativeEvent }) => {
+        setUserLocation(nativeEvent.coordinate)
+      }
+
       return (
         <MapView
-          // onUserLocationChange={onUserLocationChange}
+          onUserLocationChange={onUserLocationChange}
           provider={PROVIDER_GOOGLE}
           style={styles.map}
           customMapStyle={mapStyle}
