@@ -1,13 +1,16 @@
-import React, { useEffect, useState } from 'react';
-import { View, StyleSheet } from 'react-native';
-import { ParkingLot, parkingApi } from '../api/parking_lot';
+import { useNavigation } from '@react-navigation/native';
+import React, { useContext, useEffect, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 import {
   SearchBarComponent,
   SearchableDropdownInput,
 } from '../components/SearchBarComponent';
-import { openMaps } from '../utils/openMaps';
+import { AppContext } from '../context';
+import { ParkingLot, parkingApi } from '../api/parking_lot';
 
 const NavigationScreen = () => {
+  const { setCalloutShown, map } = useContext(AppContext);
+  const navigation = useNavigation<any>();
   const [parkingLots, setParkingLots] = useState<ParkingLot[]>([]);
 
   const fetchData = async () => {
@@ -21,8 +24,15 @@ const NavigationScreen = () => {
 
   const handleOpenGoogleMaps = ({ id }: SearchableDropdownInput) => {
     // id is the index
-    const { latitude, longitude } = parkingLots[id];
-    openMaps({ latitude, longitude });
+    const { id: newCallout, latitude, longitude } = parkingLots[id];
+    setCalloutShown(newCallout);
+    navigation.navigate('Home');
+    map?.animateToRegion({
+      latitude,
+      longitude,
+      latitudeDelta: 0,
+      longitudeDelta: 0,
+    });
   };
 
   return (
