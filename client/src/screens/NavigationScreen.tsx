@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from "react";
-import { View, StyleSheet } from "react-native";
-import { ParkingLot, parkingApi } from "../api/parking_lot";
+import React, { useEffect, useState } from 'react';
+import { View, StyleSheet } from 'react-native';
+import { ParkingLot, parkingApi } from '../api/parking_lot';
 import {
   SearchBarComponent,
   SearchableDropdownInput,
-} from "../components/SearchBarComponent";
-import { openGoogleMaps } from "../utils/googlemaps";
+} from '../components/SearchBarComponent';
+import { openMaps } from '../utils/openMaps';
 
 const NavigationScreen = () => {
   const [parkingLots, setParkingLots] = useState<ParkingLot[]>([]);
@@ -22,7 +22,7 @@ const NavigationScreen = () => {
   const handleOpenGoogleMaps = ({ id }: SearchableDropdownInput) => {
     // id is the index
     const { latitude, longitude } = parkingLots[id];
-    openGoogleMaps({ latitude, longitude });
+    openMaps({ latitude, longitude });
   };
 
   return (
@@ -42,7 +42,7 @@ export default NavigationScreen;
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#f5f5f5",
-    marginTop: "15%",
+    backgroundColor: '#f5f5f5',
+    marginTop: '15%',
   },
 });
