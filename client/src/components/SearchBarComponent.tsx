@@ -2,30 +2,24 @@ import React from "react";
 import SearchableDropdown from "react-native-searchable-dropdown";
 
 export interface SearchBarComponentProps {
-  search: string;
-  setSearch: (text: string) => void;
-  data: string[];
+  data: SearchableDropdownInput[];
+  onItemSelect: (item: SearchableDropdownInput) => void;
 }
 
 interface SearchableDropdownInput {
-  id: number;
+  id: number; // has to be number or the component drops this
   name: string;
 }
 
 export const SearchBarComponent: React.FC<SearchBarComponentProps> = ({
-  search,
-  setSearch,
   data,
+  onItemSelect,
 }) => {
-  const items: SearchableDropdownInput[] = data.map((d, id) => ({
-    id,
-    name: d,
-  }));
   return (
     <SearchableDropdown
-      onTextChange={(text: string) => setSearch(text)}
+      onTextChange={() => {}}
       // Change listner on the searchable input
-      onItemSelect={({ id, name }: SearchableDropdownInput) => alert(name)}
+      onItemSelect={onItemSelect}
       // Called after the selection from the dropdown
       containerStyle={{ padding: 5 }}
       // Suggestion container style
@@ -50,10 +44,10 @@ export const SearchBarComponent: React.FC<SearchBarComponentProps> = ({
       }}
       itemsContainerStyle={{
         // Items container style you can pass maxHeight
-        // To restrict the items dropdown hieght
+        // To restrict the items dropdown height
         maxHeight: "50%",
       }}
-      items={items}
+      items={data}
       // Mapping of item array
       defaultIndex={2}
       // Default selected item index

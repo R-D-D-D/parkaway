@@ -1,39 +1,40 @@
-import * as React from "react"
-import { NavigationContainer } from "@react-navigation/native"
-import { createNativeStackNavigator } from "@react-navigation/native-stack"
-import HomeScreen from "./screens/HomeScreen"
-import LogInScreen from "./screens/LogInScreen"
-import ProfileScreen from "./screens/ProfileScreen"
-import { createBottomTabNavigator } from "@react-navigation/bottom-tabs"
-import { Button, Icon, Image } from "react-native-elements"
-import { StyleSheet } from "react-native"
-import ChatScreen, { Chatroom } from "./screens/ChatScreen"
-import { IUser } from "./context"
-import ChatListScreen from "./screens/ChatListScreen"
+import * as React from "react";
+import { NavigationContainer } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import HomeScreen from "./screens/HomeScreen";
+import LogInScreen from "./screens/LogInScreen";
+import ProfileScreen from "./screens/ProfileScreen";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { Button, Icon, Image } from "react-native-elements";
+import { StyleSheet } from "react-native";
+import ChatScreen, { Chatroom } from "./screens/ChatScreen";
+import { IUser } from "./context";
+import ChatListScreen from "./screens/ChatListScreen";
+import NavigationScreen from "./screens/NavigationScreen";
 
 export type RootStackParamList = {
-  LogIn: undefined
-  Main: { screen: string }
-}
+  LogIn: undefined;
+  Main: { screen: string };
+};
 
 export type ChatStackParamList = {
   Chat: {
-    otherUser?: IUser
-    chatroom?: Chatroom
-    fromMain?: boolean
-  }
-  ChatList: undefined
-}
+    otherUser?: IUser;
+    chatroom?: Chatroom;
+    fromMain?: boolean;
+  };
+  ChatList: undefined;
+};
 
 export type RootTabParamList = {
-  Profile: undefined
-  Home: undefined
-  ChatStack: undefined
-}
+  Profile: undefined;
+  Home: undefined;
+  ChatStack: undefined;
+};
 
-const Stack = createNativeStackNavigator<RootStackParamList>()
-const Tab = createBottomTabNavigator()
-const ChatStack = createNativeStackNavigator<ChatStackParamList>()
+const Stack = createNativeStackNavigator<RootStackParamList>();
+const Tab = createBottomTabNavigator();
+const ChatStack = createNativeStackNavigator<ChatStackParamList>();
 
 export const MainTab = () => {
   return (
@@ -95,9 +96,27 @@ export const MainTab = () => {
           tabBarShowLabel: false,
         }}
       />
+      <Tab.Screen
+        name="Navigation"
+        component={NavigationScreen}
+        options={{
+          headerShown: false,
+          tabBarIcon: ({ focused }) => (
+            <Image
+              style={styles.iconImg}
+              source={
+                focused
+                  ? require("../assets/car_top_view.png")
+                  : require("../assets/car_side_view.png")
+              }
+            />
+          ),
+          tabBarShowLabel: false,
+        }}
+      />
     </Tab.Navigator>
-  )
-}
+  );
+};
 
 export const RootStack = () => {
   return (
@@ -114,8 +133,8 @@ export const RootStack = () => {
         options={{ headerShown: false }}
       />
     </Stack.Navigator>
-  )
-}
+  );
+};
 
 export const ChatStackNavigator = () => {
   return (
@@ -134,8 +153,8 @@ export const ChatStackNavigator = () => {
         })}
       />
     </ChatStack.Navigator>
-  )
-}
+  );
+};
 
 const styles = StyleSheet.create({
   iconImg: {
@@ -146,4 +165,4 @@ const styles = StyleSheet.create({
   tabBar: {
     height: 60,
   },
-})
+});
