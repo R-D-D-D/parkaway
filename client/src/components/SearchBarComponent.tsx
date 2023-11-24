@@ -6,7 +6,7 @@ export interface SearchBarComponentProps {
   onItemSelect: (item: SearchableDropdownInput) => void;
 }
 
-interface SearchableDropdownInput {
+export interface SearchableDropdownInput {
   id: number; // has to be number or the component drops this
   name: string;
 }
@@ -45,7 +45,7 @@ export const SearchBarComponent: React.FC<SearchBarComponentProps> = ({
       itemsContainerStyle={{
         // Items container style you can pass maxHeight
         // To restrict the items dropdown height
-        maxHeight: "50%",
+        maxHeight: "80%",
       }}
       items={data}
       // Mapping of item array
