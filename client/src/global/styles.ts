@@ -21,12 +21,14 @@ export const colors = {
   heaherText: "white",
   lightgreen: "#66DF48",
   blue: "#286ef0",
+  blue1: "#007bff",
   black: "#000000",
   white: "#ffffff",
   darkBlue: "#2d328a",
   pagebackground: "white",
   red: "#FF5252",
   green: "#7DF47D",
+  green1: "#28a745",
 }
 
 export const parameters = {

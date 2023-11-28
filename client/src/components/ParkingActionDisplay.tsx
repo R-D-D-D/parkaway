@@ -32,7 +32,7 @@ const ParkingActionDisplay = (props: IProps) => {
         </Text>
         <Text style={styles.text} numberOfLines={1}>
           {user.username} {isPark ? "parked at" : "left"}{" "}
-          {parkingLot.officeName} office, lot {parkingLot.lotName}
+          {parkingLot.officeName}, {parkingLot.lotName}
         </Text>
       </View>
     )

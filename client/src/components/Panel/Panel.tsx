@@ -1,5 +1,11 @@
 import { Text, StyleSheet, View } from "react-native"
-import React, { Component, useContext } from "react"
+import React, {
+  Component,
+  useCallback,
+  useContext,
+  useMemo,
+  useRef,
+} from "react"
 import { colors, SCREEN_WIDTH, SCREEN_HEIGHT } from "../../global/styles"
 import AllLotsInfo from "./AllLotsInfo"
 import SingleLotInfo from "./SingleLotInfo"
@@ -8,6 +14,8 @@ import EditParkingLots from "./EditParkingLots"
 import { ParkingAction } from "../../api/parking_action"
 import OfficeInfo from "./OfficeInfo"
 import { AppContext } from "../../context"
+import BottomSheet from "@gorhom/bottom-sheet"
+import { BottomSheetMethods } from "@gorhom/bottom-sheet/lib/typescript/types"
 
 export enum PanelType {
   SINGLE_LOT_INFO = 1,
@@ -25,11 +33,18 @@ interface IPanelProps {
   }
   isTestMode: boolean
   office: [string, ParkingLot[]] | null
+  bottomSheetRef: React.RefObject<BottomSheetMethods>
 }
 
 const Panel = (props: IPanelProps) => {
-  const { type, handleCreateParkingLot, newParkingLot, isTestMode, office } =
-    props
+  const {
+    type,
+    handleCreateParkingLot,
+    newParkingLot,
+    isTestMode,
+    office,
+    bottomSheetRef,
+  } = props
   const { parkingLots, parkingActions } = useContext(AppContext)
 
   const render = () => {
@@ -47,6 +62,7 @@ const Panel = (props: IPanelProps) => {
             parkingLots={parkingLots}
             isTestMode={isTestMode}
             parkingActions={parkingActions}
+            bottomSheetRef={bottomSheetRef}
           />
         )
       case PanelType.OFFICE_INFO:
@@ -68,17 +84,7 @@ const Panel = (props: IPanelProps) => {
     }
   }
 
-  return <View style={styles.container}>{render()}</View>
+  return <>{render()}</>
 }
-
-const styles = StyleSheet.create({
-  container: {
-    width: "100%",
-    height: SCREEN_HEIGHT * 0.35,
-    backgroundColor: colors.white,
-    position: "absolute",
-    bottom: 0,
-  },
-})
 
 export default Panel

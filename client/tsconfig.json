@@ -3,5 +3,8 @@
     "strict": true,
     "strictNullChecks": true
   },
-  "extends": "expo/tsconfig.base"
+  "extends": "expo/tsconfig.base",
+  "paths": {
+    "@/*": ["./*"]
+  }
 }

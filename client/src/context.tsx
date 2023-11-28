@@ -77,7 +77,7 @@ interface IContext {
   userLocation: LatLng
   setUserLocation: (location: LatLng) => void
   bookings: IBooking[] | undefined
-  hasUserBooked: boolean
+  userBooking: IBooking | undefined
   notificationQueue: IBottomsheetNotification[]
 }
 
@@ -96,7 +96,7 @@ export const AppContext = createContext<IContext>({
   userLocation: { latitude: 0, longitude: 0 },
   setUserLocation: (location: LatLng) => {},
   bookings: undefined,
-  hasUserBooked: false,
+  userBooking: undefined,
   notificationQueue: [],
 })
 
@@ -167,10 +167,8 @@ export const AppContextProvider = ({ children }: IProps) => {
     [bookings]
   )
 
-  const hasUserBooked = useMemo(
-    () =>
-      filteredBookings.findIndex((booking) => booking.user.id === user?.id) >
-      -1,
+  const userBooking = useMemo(
+    () => filteredBookings.find((booking) => booking.user.id === user?.id),
     [user, filteredBookings]
   )
 
@@ -341,7 +339,6 @@ export const AppContextProvider = ({ children }: IProps) => {
         }
       }
       if (broadcastNotifications.length > 0) {
-        console.log("broadcastNotifications", broadcastNotifications)
         for (const noti of broadcastNotifications) {
           if (
             (noti.type === NotificationType.USER_LEFT ||
@@ -419,7 +416,7 @@ export const AppContextProvider = ({ children }: IProps) => {
         userLocation,
         setUserLocation,
         bookings: filteredBookings,
-        hasUserBooked,
+        userBooking,
         notificationQueue,
       }}
     >

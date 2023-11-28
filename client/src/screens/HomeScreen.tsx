@@ -1,8 +1,15 @@
-import { useIsFocused } from '@react-navigation/core';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import * as Location from 'expo-location';
-import { useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { Image, StyleSheet, View } from 'react-native';
+import { useIsFocused } from "@react-navigation/core"
+import { NativeStackNavigationProp } from "@react-navigation/native-stack"
+import * as Location from "expo-location"
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
+import { Image, StyleSheet, View, Text, TouchableOpacity } from "react-native"
 import MapView, {
   Callout,
   MapMarker,
@@ -10,39 +17,42 @@ import MapView, {
   Marker,
   PROVIDER_GOOGLE,
   Polygon,
-} from 'react-native-maps';
-import { ParkingLot, parkingApi } from '../api/parking_lot';
-import FloatingMenuBtn from '../components/FloatingMenuButton';
-import CustomMarker from '../components/Marker';
-import Panel, { PanelType } from '../components/Panel/Panel';
-import Spinner from '../components/Spinner';
-import { AppContext } from '../context';
-import { mapStyle } from '../global/mapStyle';
+} from "react-native-maps"
+import { ParkingLot, parkingApi } from "../api/parking_lot"
+import FloatingMenuBtn from "../components/FloatingMenuButton"
+import CustomMarker from "../components/Marker"
+import Panel, { PanelType } from "../components/Panel/Panel"
+import Spinner from "../components/Spinner"
+import { AppContext } from "../context"
+import { mapStyle } from "../global/mapStyle"
 import {
   SCREEN_HEIGHT,
   SCREEN_WIDTH,
   colors,
   parameters,
-} from '../global/styles';
-import { RootStackParamList } from '../navigation';
-import { openMaps } from '../utils/openMaps';
-import { showToast } from '../utils/toast';
+} from "../global/styles"
+import { RootStackParamList } from "../navigation"
+import { openMaps } from "../utils/openMaps"
+import { showToast } from "../utils/toast"
+import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet"
+import { SearchableDropdownInput } from "../components/SearchBarComponent"
+import Icon, { IconType } from "react-native-dynamic-vector-icons"
 
-export const LAT_DELTA = 0.005;
-export const LNG_DELTA = 0.0025;
+export const LAT_DELTA = 0.005
+export const LNG_DELTA = 0.0025
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
-  'Main'
->;
+  "Main"
+>
 
 const HomeScreen = ({ navigation }) => {
   // coordinate of the current user
   const [latLng, setLatLng] = useState<{
-    latitude: number;
-    longitude: number;
-  } | null>(null);
-  let markerRefs = useRef<Map<string, MapMarker>>(new Map());
+    latitude: number
+    longitude: number
+  } | null>(null)
+  let markerRefs = useRef<Map<string, MapMarker>>(new Map())
   const {
     user,
     parkingLots,
@@ -51,24 +61,20 @@ const HomeScreen = ({ navigation }) => {
     map,
     setMap,
     setUserLocation,
-  } = useContext(AppContext);
+  } = useContext(AppContext)
   // const navigation = useNavigation<HomeScreenNavigationProp>()
-  const isFocused = useIsFocused();
+  const isFocused = useIsFocused()
   const [newParkingLot, setNewParkingLot] = useState<{
-    longitude: number;
-    latitude: number;
-  } | null>(null);
-  const [isAdminEditing, setIsAdminEditing] = useState(false);
-  const [isTestMode, setIsTestMode] = useState(false);
-  const [mapReady, setMapReady] = useState(false);
-  const dataReady = true;
+    longitude: number
+    latitude: number
+  } | null>(null)
+  const [isAdminEditing, setIsAdminEditing] = useState(false)
+  const [isTestMode, setIsTestMode] = useState(false)
+  const [mapReady, setMapReady] = useState(false)
+  const dataReady = true
   const [officeSelected, setOfficeSelected] = useState<
     [string, ParkingLot[]] | null
-  >(null);
-  // const [userLocation, setUserLocation] = useState<LatLng>({
-  //   longitude: 0,
-  //   latitude: 0,
-  // })
+  >(null)
 
   const panelDisplayed: PanelType = officeSelected
     ? PanelType.OFFICE_INFO
@@ -76,93 +82,107 @@ const HomeScreen = ({ navigation }) => {
     ? PanelType.EDIT_PARKING_LOT
     : calloutShown
     ? PanelType.SINGLE_LOT_INFO
-    : PanelType.ALL_LOTS_INFO;
+    : PanelType.ALL_LOTS_INFO
+
+  useEffect(() => {
+    switch (panelDisplayed) {
+      case PanelType.ALL_LOTS_INFO:
+      case PanelType.EDIT_PARKING_LOT:
+      case PanelType.OFFICE_INFO:
+        bottomSheetRef.current?.snapToIndex(1)
+        break
+      case PanelType.SINGLE_LOT_INFO:
+        bottomSheetRef.current?.snapToIndex(0)
+        break
+      default:
+    }
+  }, [panelDisplayed])
 
   const handleCenter = () => {
     if (latLng && map) {
-      const { latitude, longitude } = latLng;
+      const { latitude, longitude } = latLng
       map.animateToRegion({
         latitude,
         longitude,
         latitudeDelta: LAT_DELTA,
         longitudeDelta: LNG_DELTA,
-      });
+      })
     }
-  };
+  }
 
   const handleEdit = () => {
     if (isAdminEditing) {
-      setNewParkingLot(null);
+      setNewParkingLot(null)
     }
-    setIsAdminEditing(!isAdminEditing);
-  };
+    setIsAdminEditing(!isAdminEditing)
+  }
 
   const handleTest = () => {
-    setIsTestMode(!isTestMode);
-  };
+    setIsTestMode(!isTestMode)
+  }
 
   const checkPermission = async () => {
-    let { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== 'granted') {
+    let { status } = await Location.requestForegroundPermissionsAsync()
+    if (status !== "granted") {
       showToast({
-        title: 'Permission to access location was denied',
-        type: 'error',
-      });
-      return;
+        title: "Permission to access location was denied",
+        type: "error",
+      })
+      return
     }
 
     let {
       coords: { latitude, longitude },
-    } = await Location.getCurrentPositionAsync({});
-    setLatLng({ latitude, longitude });
-  };
+    } = await Location.getCurrentPositionAsync({})
+    setLatLng({ latitude, longitude })
+  }
 
   useEffect(() => {
     const init = async () => {
       if (user) {
-        checkPermission();
+        checkPermission()
       } else {
-        navigation.navigate('LogIn');
+        navigation.navigate("LogIn")
       }
-    };
-    init();
-  }, [isFocused]);
+    }
+    init()
+  }, [isFocused])
 
   const handleNewParkingLot = (e: MapPressEvent) => {
     setNewParkingLot({
       longitude: e.nativeEvent.coordinate.longitude,
       latitude: e.nativeEvent.coordinate.latitude,
-    });
-  };
+    })
+  }
 
-  const handleCreateParkingLot = async (parkingLot: Omit<ParkingLot, 'id'>) => {
+  const handleCreateParkingLot = async (parkingLot: Omit<ParkingLot, "id">) => {
     try {
-      await parkingApi.createParkingLot(parkingLot);
-      setNewParkingLot(null);
-      showToast({ title: 'Success!', type: 'success', duration: 2000 });
+      await parkingApi.createParkingLot(parkingLot)
+      setNewParkingLot(null)
+      showToast({ title: "Success!", type: "success", duration: 2000 })
     } catch (e) {
-      showToast({ title: (e as Error).message, type: 'error' });
+      showToast({ title: (e as Error).message, type: "error" })
     }
-  };
+  }
 
   const renderedMap = useMemo(() => {
     if (latLng) {
-      const offices = new Map<string, ParkingLot[]>();
+      const offices = new Map<string, ParkingLot[]>()
       for (const lot of parkingLots) {
-        const officeLots = offices.get(lot.officeName);
+        const officeLots = offices.get(lot.officeName)
         if (officeLots) {
           offices.set(lot.officeName, [
             ...officeLots,
             JSON.parse(JSON.stringify(lot)),
-          ]);
+          ])
         } else {
-          offices.set(lot.officeName, [JSON.parse(JSON.stringify(lot))]);
+          offices.set(lot.officeName, [JSON.parse(JSON.stringify(lot))])
         }
       }
 
       const onUserLocationChange = ({ nativeEvent }) => {
-        setUserLocation(nativeEvent.coordinate);
-      };
+        setUserLocation(nativeEvent.coordinate)
+      }
 
       return (
         <MapView
@@ -172,8 +192,8 @@ const HomeScreen = ({ navigation }) => {
           customMapStyle={mapStyle}
           showsUserLocation={true}
           followsUserLocation={true}
-          ref={map => {
-            if (map) setMap(map);
+          ref={(map) => {
+            if (map) setMap(map)
           }}
           region={{
             latitude: latLng.latitude,
@@ -183,22 +203,22 @@ const HomeScreen = ({ navigation }) => {
           }}
           onPress={(e: MapPressEvent) => {
             if (
-              e.nativeEvent.action !== 'marker-press' &&
-              e.nativeEvent.action !== 'polygon-press'
+              e.nativeEvent.action !== "marker-press" &&
+              e.nativeEvent.action !== "polygon-press"
             ) {
-              setCalloutShown(null);
-              setOfficeSelected(null);
+              setCalloutShown(null)
+              setOfficeSelected(null)
             }
             if (isAdminEditing) {
-              handleNewParkingLot(e);
+              handleNewParkingLot(e)
             }
           }}
           onMapReady={() => setMapReady(true)}
         >
-          {parkingLots.map(lot => {
+          {parkingLots.map((lot) => {
             const isUserParkingHere = lot.currUsers
-              .map(user => user.id)
-              .includes(user?.id || 0);
+              .map((user) => user.id)
+              .includes(user?.id || 0)
             return (
               <Marker
                 coordinate={{
@@ -207,23 +227,23 @@ const HomeScreen = ({ navigation }) => {
                 }}
                 key={`${lot.id}-${Date.now()}`}
                 pinColor={
-                  lot.totalLots - lot.currUsers.length === 0 ? 'red' : 'green'
+                  lot.totalLots - lot.currUsers.length === 0 ? "red" : "green"
                 }
-                ref={el => {
+                ref={(el) => {
                   if (calloutShown === lot.id) {
-                    markerRefs.current.get(lot.id)?.hideCallout();
+                    markerRefs.current.get(lot.id)?.hideCallout()
                   }
-                  el && markerRefs.current.set(lot.id, el);
-                  el && el.showCallout();
+                  el && markerRefs.current.set(lot.id, el)
+                  el && el.showCallout()
                 }}
                 onPress={() => {
-                  setCalloutShown(lot.id);
-                  setOfficeSelected(null);
+                  setCalloutShown(lot.id)
+                  setOfficeSelected(null)
                 }}
               >
                 {isUserParkingHere && (
                   <Image
-                    source={require('../../assets/car_side_view.png')}
+                    source={require("../../assets/car_side_view.png")}
                     style={styles.parkingImg}
                   />
                 )}
@@ -234,7 +254,7 @@ const HomeScreen = ({ navigation }) => {
                   />
                 </Callout>
               </Marker>
-            );
+            )
           })}
           {newParkingLot && (
             <Marker
@@ -243,14 +263,14 @@ const HomeScreen = ({ navigation }) => {
                 longitude: newParkingLot.longitude,
               }}
               key={`new-parking-lot-${Date.now()}`}
-              pinColor={'grey'}
+              pinColor={"grey"}
             ></Marker>
           )}
           {!isAdminEditing &&
-            [...offices].map(keyValue => {
+            [...offices].map((keyValue) => {
               return (
                 <Polygon
-                  coordinates={keyValue[1].map(lot => ({
+                  coordinates={keyValue[1].map((lot) => ({
                     latitude: lot.latitude,
                     longitude: lot.longitude,
                   }))}
@@ -258,24 +278,73 @@ const HomeScreen = ({ navigation }) => {
                   strokeColor="#FFFFFF"
                   onPress={() => {
                     if (!isAdminEditing) {
-                      setOfficeSelected(keyValue);
-                      setCalloutShown(null);
+                      setOfficeSelected(keyValue)
+                      setCalloutShown(null)
                     }
                   }}
                   tappable
                   key={`polygon-${keyValue[1][0].officeName}-${Date.now()}`}
                 />
-              );
+              )
             })}
         </MapView>
-      );
+      )
     }
-  }, [parkingLots, latLng, newParkingLot, isAdminEditing]);
+  }, [parkingLots, latLng, newParkingLot, isAdminEditing])
+
+  // ref
+  const bottomSheetRef = useRef<BottomSheet>(null)
+
+  // variables
+  const snapPoints = useMemo(
+    () => [`${(200 / SCREEN_HEIGHT) * 100}%`, "40%", "65%"],
+    []
+  )
+
+  // callbacks
+  const handleSheetChanges = useCallback((index: number) => {
+    console.log("handleSheetChanges", index)
+  }, [])
 
   return (
     <View style={styles.container}>
+      <TouchableOpacity
+        style={{
+          position: "absolute",
+          top: "10%",
+          left: "5%",
+          right: 0,
+          zIndex: 99999999999,
+          width: "90%",
+          height: 40,
+          borderWidth: 1,
+          borderColor: "#ccc",
+          backgroundColor: "#FAF7F6",
+          borderRadius: 20,
+        }}
+        onPress={() => navigation.navigate("Search")}
+      >
+        <View
+          style={{
+            padding: 8,
+            display: "flex",
+            flexDirection: "row",
+            alignItems: "center",
+          }}
+        >
+          <Icon
+            name={"magnify"}
+            type={IconType.MaterialCommunityIcons}
+            // size={24}
+            color={colors.grey2}
+          />
+          <Text style={{ color: colors.grey2, marginLeft: 16 }}>
+            Search here...
+          </Text>
+        </View>
+      </TouchableOpacity>
       {latLng !== null && user && (
-        <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ alignItems: "center", justifyContent: "center" }}>
           {renderedMap}
 
           <FloatingMenuBtn
@@ -283,18 +352,18 @@ const HomeScreen = ({ navigation }) => {
             onPress={() => {
               if (calloutShown) {
                 const parkingLot = parkingLots.find(
-                  ({ id }) => id === calloutShown,
-                );
-                if (!parkingLot) return;
-                const { latitude, longitude } = parkingLot;
-                openMaps({ latitude, longitude });
+                  ({ id }) => id === calloutShown
+                )
+                if (!parkingLot) return
+                const { latitude, longitude } = parkingLot
+                openMaps({ latitude, longitude })
               } else {
-                handleCenter();
+                handleCenter()
               }
             }}
           >
             <Image
-              source={require('../../assets/navigation.png')}
+              source={require("../../assets/navigation.png")}
               style={styles.floatingBtnImg}
             />
           </FloatingMenuBtn>
@@ -302,12 +371,12 @@ const HomeScreen = ({ navigation }) => {
             <FloatingMenuBtn style={styles.adminEditBtn} onPress={handleEdit}>
               {isAdminEditing ? (
                 <Image
-                  source={require('../../assets/close.png')}
+                  source={require("../../assets/close.png")}
                   style={styles.floatingBtnImg}
                 />
               ) : (
                 <Image
-                  source={require('../../assets/pencil.png')}
+                  source={require("../../assets/pencil.png")}
                   style={styles.floatingBtnImg}
                 />
               )}
@@ -316,54 +385,66 @@ const HomeScreen = ({ navigation }) => {
           <FloatingMenuBtn style={styles.testBtn} onPress={handleTest}>
             {isTestMode ? (
               <Image
-                source={require('../../assets/close.png')}
+                source={require("../../assets/close.png")}
                 style={styles.floatingBtnImg}
               />
             ) : (
               <Image
-                source={require('../../assets/incognito.png')}
+                source={require("../../assets/incognito.png")}
                 style={styles.floatingBtnImg}
               />
             )}
           </FloatingMenuBtn>
-          <Panel
-            type={panelDisplayed}
-            handleCreateParkingLot={handleCreateParkingLot}
-            newParkingLot={newParkingLot}
-            isTestMode={isTestMode}
-            office={officeSelected}
-          />
+          <BottomSheet
+            ref={bottomSheetRef}
+            index={1}
+            snapPoints={snapPoints}
+            onChange={handleSheetChanges}
+            style={{
+              borderRadius: 20,
+              overflow: "visible",
+            }}
+          >
+            <Panel
+              type={panelDisplayed}
+              handleCreateParkingLot={handleCreateParkingLot}
+              newParkingLot={newParkingLot}
+              isTestMode={isTestMode}
+              office={officeSelected}
+              bottomSheetRef={bottomSheetRef}
+            />
+          </BottomSheet>
         </View>
       )}
       {(!mapReady || !dataReady) && <Spinner />}
     </View>
-  );
-};
+  )
+}
 
-export default HomeScreen;
+export default HomeScreen
 const styles = StyleSheet.create({
   container: {
     // flex: 1,
     backgroundColor: colors.white,
-    position: 'relative',
+    position: "relative",
   },
   header: {
     backgroundColor: colors.blue,
     height: parameters.headerHeight,
-    alignItems: 'flex-start',
+    alignItems: "flex-start",
   },
   navigateBtn: {
-    position: 'absolute',
+    position: "absolute",
     bottom: SCREEN_HEIGHT * 0.37,
     right: SCREEN_WIDTH * 0.05,
   },
   testBtn: {
-    position: 'absolute',
+    position: "absolute",
     bottom: SCREEN_HEIGHT * 0.45,
     right: SCREEN_WIDTH * 0.05,
   },
   adminEditBtn: {
-    position: 'absolute',
+    position: "absolute",
     bottom: SCREEN_HEIGHT * 0.53,
     right: SCREEN_WIDTH * 0.05,
   },
@@ -373,7 +454,7 @@ const styles = StyleSheet.create({
     height: SCREEN_HEIGHT * 0.03,
   },
   card: {
-    alignItems: 'center',
+    alignItems: "center",
     margin: SCREEN_WIDTH / 22,
   },
 
@@ -385,7 +466,7 @@ const styles = StyleSheet.create({
   map: {
     marginVertical: 0,
     width: SCREEN_WIDTH,
-    height: '100%',
+    height: "100%",
   },
 
   parkingImg: {
@@ -398,7 +479,7 @@ const styles = StyleSheet.create({
     height: 16,
     borderRadius: 8,
     backgroundColor: colors.blue,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
-});
+})

@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, Alert } from "react-native"
+import { StyleSheet, Text, View, Alert, TouchableOpacity } from "react-native"
 import React, {
   useCallback,
   useContext,
@@ -24,8 +24,13 @@ import { Notifier, Easing } from "react-native-notifier"
 import useNotification, { NotificationType } from "../../hooks/useNotification"
 import Icon, { IconType } from "react-native-dynamic-vector-icons"
 import useBooking from "../../hooks/useBooking"
-import { CountdownTimer, FlipNumber } from "react-native-flip-countdown-timer"
 import dayjs from "dayjs"
+import { BottomSheetMethods } from "@gorhom/bottom-sheet/lib/typescript/types"
+import { Avatar, ListItem } from "@rneui/themed"
+import { ScrollView } from "react-native-gesture-handler"
+import DashedLine from "react-native-dashed-line"
+import { nameToAbbr } from "../../utils/string"
+import { openMaps } from "../../utils/openMaps"
 
 type SingleLotNavigationProp = NativeStackNavigationProp<
   ChatStackParamList,
@@ -36,12 +41,13 @@ interface IProps {
   parkingLots: ParkingLot[]
   isTestMode: boolean
   parkingActions: ParkingAction[]
+  bottomSheetRef: React.RefObject<BottomSheetMethods>
 }
 
 const SingleLotInfo = (props: IProps) => {
   // console.log("[SingleLotInfo] props:", props)
-  const { parkingLots, isTestMode, parkingActions } = props
-  const { user, calloutShown, userLocation, bookings, hasUserBooked } =
+  const { parkingLots, isTestMode, parkingActions, bottomSheetRef } = props
+  const { user, calloutShown, userLocation, bookings, userBooking, map } =
     useContext(AppContext)
   const [parking, setParking] = useState(false)
   const navigation = useNavigation<SingleLotNavigationProp>()
@@ -53,7 +59,6 @@ const SingleLotInfo = (props: IProps) => {
   const { createBooking } = useBooking()
 
   const parkingLot = parkingLots.find((lot) => lot.id === calloutShown)
-  const bookingsLength = bookings ? bookings.length : 0
   const isUserNear = useMemo(() => {
     if (parkingLot) {
       const { latitude, longitude } = userLocation
@@ -71,6 +76,7 @@ const SingleLotInfo = (props: IProps) => {
     }
   }, [userLocation])
 
+  const hasUserBookedHere = userBooking?.parkingLotId === parkingLot.id
   const currBookings = useMemo(() => {
     return parkingLot && bookings
       ? bookings.filter((booking) => booking.parkingLotId === parkingLot.id)
@@ -81,13 +87,23 @@ const SingleLotInfo = (props: IProps) => {
     const lotParkingActions = parkingActions.filter(
       (action) => action.parkingLot.id === parkingLot.id
     )
-    const freeLots = parkingLot.totalLots - parkingLot.currUsers.length
+    const freeLots =
+      parkingLot.totalLots - parkingLot.currUsers.length - currBookings.length
+    const isLotFull = freeLots === 0
+    const isAvailable = freeLots > 0
     const isUserParkingHere =
       parkingLot?.currUsers.find((u) => u.id === user!.id) !== undefined
     const isUserParked =
       parkingLots.find((lot) =>
         lot.currUsers.map((u) => u.id).includes(user!.id)
       ) !== undefined
+
+    const [expandUserList, setExpandUserList] = useState(false)
+    const infoColor = isAvailable
+      ? isUserParkingHere
+        ? colors.blue1
+        : colors.green1
+      : colors.red
 
     const handlePark = async () => {
       if (user) {
@@ -187,36 +203,74 @@ const SingleLotInfo = (props: IProps) => {
       }
     }
 
-    const getBtnConfig = useCallback(() => {
-      if (isUserParkingHere) {
-        return {
-          text: "Leave",
-          disabled: false,
-        }
-      } else if (freeLots === 0) {
-        return {
-          text: "Unavailable",
-          disabled: true,
-        }
-      } else if (isUserParked) {
-        return {
-          text: "Park",
-          disabled: true,
-        }
-      } else {
-        if (isUserNear || isTestMode) {
+    const showUserList = () => {
+      setExpandUserList(true)
+      bottomSheetRef.current?.snapToIndex(2)
+    }
+
+    const hideUserList = () => {
+      setExpandUserList(false)
+      bottomSheetRef.current?.snapToIndex(0)
+    }
+
+    const getBtnConfig = () => {
+      if (isUserParked) {
+        if (isUserParkingHere) {
           return {
-            text: "Park",
-            disabled: false,
+            text: "Leave",
+            onClick: handlePark,
           }
         } else {
           return {
+            text: "",
+            onClick: () => {},
+          }
+        }
+      } else {
+        if (hasUserBookedHere) {
+          return {
+            text: "Reserved",
+            onClick: () => {},
+          }
+        }
+        if (expandUserList) {
+          return {
+            text: "Close",
+            onClick: hideUserList,
+          }
+        }
+        if (isLotFull) {
+          return {
+            text: "Swap",
+            onClick: showUserList,
+          }
+        }
+        if (isUserParkingHere) {
+          return {
+            text: "Leave",
+            onClick: handlePark,
+          }
+        }
+        if (isUserNear || isTestMode) {
+          return {
             text: "Park",
-            disabled: true,
+            onClick: handlePark,
+          }
+        } else {
+          if (!userBooking) {
+            return {
+              text: "Reserve",
+              onClick: handleBook,
+            }
+          } else {
+            return {
+              text: "",
+              onClick: () => {},
+            }
           }
         }
       }
-    }, [parkingLots, calloutShown, user, isUserNear, isTestMode])
+    }
 
     const getFormattedTime = (idx: number) => {
       const parkingAction = lotParkingActions.find(
@@ -233,140 +287,188 @@ const SingleLotInfo = (props: IProps) => {
       <>
         {parkingLot && (
           <View style={styles.container}>
-            <Text style={styles.text1}>
-              {parkingLot.officeName} Lot {parkingLot.lotName}
-            </Text>
-
-            <View style={styles.avatarRowContainer}>
-              {[...Array(freeLots - currBookings.length).keys()].map((idx) => (
-                <View style={styles.avatarContainer} key={`empty-${idx}`}>
-                  <Image
-                    source={require("../../../assets/grey-avatar.png")}
-                    style={styles.avatar}
-                  />
-                  <Text>Available</Text>
-                  <Text style={styles.timeText}></Text>
-                </View>
-              ))}
-              {currBookings.map((booking) => (
-                <View
-                  style={styles.avatarContainer}
-                  key={`booking-${booking.createdAt}`}
-                >
-                  <Image
-                    source={require("../../../assets/man.png")}
-                    style={styles.avatar}
-                  />
-                  {booking.createdAt &&
-                    (`${booking.user.id}` === `${user?.id}` ? (
-                      <>
-                        <Text>Booking expires</Text>
-                        <Text style={styles.timeText}></Text>
-                        <Text>
-                          {formatDate(
-                            dayjs(booking.createdAt.toDate())
-                              .add(10, "minute")
-                              .toDate(),
-                            "HH:mm"
-                          )}
-                        </Text>
-                      </>
-                    ) : (
-                      <>
-                        <Text>Booked until</Text>
-                        <Text style={styles.timeText}></Text>
-                        <Text>
-                          {formatDate(
-                            dayjs(booking.createdAt.toDate())
-                              .add(10, "minute")
-                              .toDate(),
-                            "HH:mm"
-                          )}
-                        </Text>
-                      </>
-                    ))}
-                </View>
-              ))}
-              {[...Array(parkingLot.currUsers.length).keys()].map((idx) => (
-                <View style={styles.avatarContainer} key={`occupied-${idx}`}>
-                  <Image
-                    source={require("../../../assets/man.png")}
-                    style={styles.avatar}
-                  />
-                  <Text>{parkingLot.currUsers[idx].username}</Text>
-                  <Text style={styles.timeText}>
-                    Here since{"\n"}
-                    {getFormattedTime(idx)}
-                  </Text>
-                  {freeLots === 0 && !isUserParkingHere && (
-                    <Button
-                      title={"Swap"}
-                      onPress={() => handleSwap(parkingLot.currUsers[idx])}
-                      buttonStyle={{
-                        backgroundColor: colors.red,
-                      }}
-                    />
-                  )}
-                </View>
-              ))}
-            </View>
-            {(!isUserNear || isTestMode) &&
-              !isUserParked &&
-              !hasUserBooked &&
-              freeLots - bookingsLength > 0 && (
-                <Button
-                  title={"Book"}
-                  onPress={() => handleBook()}
-                  buttonStyle={{
-                    backgroundColor: colors.red,
-                  }}
-                  containerStyle={{
-                    width: 200,
-                    alignSelf: "center",
-                  }}
-                />
-              )}
-            {(isUserParkingHere || freeLots > 0) && (
+            <View
+              style={StyleSheet.flatten([
+                { backgroundColor: infoColor },
+                styles.outerContainer,
+              ])}
+            >
               <View
-                style={{
-                  position: "relative",
-                }}
+                style={StyleSheet.flatten([
+                  styles.innerContainer,
+                  {
+                    borderColor: infoColor,
+                  },
+                ])}
               >
-                <Button
-                  title={getBtnConfig().text}
-                  buttonStyle={{
-                    backgroundColor:
-                      freeLots === 0 && !isUserParkingHere
-                        ? colors.grey4
-                        : colors.red,
-                  }}
-                  containerStyle={{
-                    width: 200,
-                    alignSelf: "center",
-                  }}
-                  titleStyle={{ color: "white", marginHorizontal: 20 }}
-                  onPress={() => handlePark()}
-                  disabled={getBtnConfig().disabled}
-                  loading={parking}
-                />
-                {isUserParkingHere && (
-                  <View style={{ position: "absolute", top: 0, right: 40 }}>
+                <View style={styles.headerRow}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                    }}
+                  >
+                    <Image
+                      source={require("../../../assets/carpark-entrance.jpg")}
+                      style={{ width: 40, height: 40, borderRadius: 4 }}
+                    />
+                    <View>
+                      <Text style={{ fontWeight: "bold" }}>
+                        {parkingLot.officeName}, {parkingLot.lotName}
+                      </Text>
+                      <Text style={{ color: colors.grey2, lineHeight: 22 }}>
+                        12 minutes e-clearance
+                      </Text>
+                    </View>
+                  </View>
+                  <View>
                     <Button
+                      type="solid"
+                      buttonStyle={{
+                        backgroundColor: colors.blue1,
+                        padding: 10,
+                        borderRadius: 20,
+                      }}
                       icon={
                         <Icon
-                          name={"bell-ring-outline"}
+                          name={"directions"}
                           type={IconType.MaterialCommunityIcons}
-                          size={24}
+                          size={18}
+                          color={"white"}
                         />
                       }
-                      buttonStyle={{ borderColor: colors.grey10 }}
-                      type="clear"
-                      onPress={() => setConfirmLeavingVisible(true)}
+                      titleStyle={{
+                        fontSize: 14,
+                        marginLeft: 6,
+                      }}
+                      title="Direction"
+                      onPress={() => {
+                        openMaps({
+                          latitude: parkingLot.latitude,
+                          longitude: parkingLot.longitude,
+                        })
+                      }}
                     />
                   </View>
+                </View>
+                <DashedLine
+                  dashLength={2}
+                  dashThickness={1}
+                  dashColor={colors.grey4}
+                />
+                <View style={styles.footerRow}>
+                  <Text style={{ color: colors.grey2 }}>
+                    {isUserParkingHere
+                      ? `Parked here since: ${formatDate(
+                          lotParkingActions
+                            .find((action) => action.user.id === user?.id)
+                            ?.createdAt?.toDate() || 0,
+                          "HH:mm"
+                        )}`
+                      : hasUserBookedHere
+                      ? `Reservation expires at: ${formatDate(
+                          dayjs(userBooking.createdAt?.toDate())
+                            .add(10, "minute")
+                            .toDate(),
+                          "HH:mm"
+                        )}`
+                      : isAvailable
+                      ? "Available"
+                      : "Unavailable"}
+                  </Text>
+                  <View style={{ flexDirection: "row" }}>
+                    <Text style={{ color: infoColor }}>
+                      {parkingLot.totalLots - parkingLot.currUsers.length} slots
+                    </Text>
+                    <Text> | </Text>
+                    <Text> 24 HRs</Text>
+                  </View>
+                </View>
+                {expandUserList && (
+                  <ScrollView
+                    style={{ height: SCREEN_HEIGHT * 0.65 - 220, marginTop: 8 }}
+                  >
+                    <>
+                      {currBookings.map((booking) => {
+                        const isCurrUser =
+                          booking.createdAt && booking.user.id === user?.id
+                        return (
+                          <ListItem
+                            topDivider
+                            bottomDivider
+                            containerStyle={{ padding: 4 }}
+                            key={`booking-${booking.createdAt}`}
+                          >
+                            <Avatar
+                              rounded
+                              title={nameToAbbr(booking.user.username)}
+                              containerStyle={{ backgroundColor: colors.red }}
+                              size={32}
+                            />
+                            <ListItem.Content>
+                              <ListItem.Title style={{ fontSize: 16 }}>
+                                {isCurrUser
+                                  ? "Your reservation expires at"
+                                  : "Reserved until"}
+                              </ListItem.Title>
+                              <ListItem.Subtitle style={{ fontSize: 14 }}>
+                                {formatDate(
+                                  dayjs(booking.createdAt?.toDate())
+                                    .add(10, "minute")
+                                    .toDate(),
+                                  "HH:mm"
+                                )}
+                              </ListItem.Subtitle>
+                            </ListItem.Content>
+                          </ListItem>
+                        )
+                      })}
+                      {parkingLot.currUsers.map((user, idx) => (
+                        <ListItem
+                          topDivider
+                          bottomDivider
+                          containerStyle={{ padding: 4 }}
+                        >
+                          <Avatar
+                            rounded
+                            title={nameToAbbr(user.username)}
+                            containerStyle={{ backgroundColor: "grey" }}
+                            size={32}
+                          />
+                          <ListItem.Content>
+                            <ListItem.Title style={{ fontSize: 16 }}>
+                              {user.username}
+                            </ListItem.Title>
+                            <ListItem.Subtitle style={{ fontSize: 14 }}>
+                              {`Here since ${getFormattedTime(idx)}`}
+                            </ListItem.Subtitle>
+                          </ListItem.Content>
+                          <Button
+                            title={"Swap"}
+                            buttonStyle={{
+                              backgroundColor: colors.red,
+                              padding: 4,
+                            }}
+                            titleStyle={{
+                              color: "white",
+                              fontSize: 12,
+                            }}
+                            onPress={() => handleSwap(user)}
+                          />
+                        </ListItem>
+                      ))}
+                    </>
+                  </ScrollView>
                 )}
               </View>
-            )}
+              <TouchableOpacity
+                style={styles.btn}
+                onPress={() => getBtnConfig().onClick()}
+              >
+                <Text style={{ color: "white", fontWeight: "bold" }}>
+                  {getBtnConfig().text}
+                </Text>
+              </TouchableOpacity>
+            </View>
             <Dialog
               isVisible={visible}
               onBackdropPress={() => setVisible(!visible)}
@@ -415,7 +517,12 @@ const SingleLotInfo = (props: IProps) => {
 export default SingleLotInfo
 
 const styles = StyleSheet.create({
-  container: {},
+  container: {
+    textAlign: "center",
+    justifyContent: "center",
+    flexDirection: "column",
+    alignItems: "center",
+  },
   text1: {
     fontSize: 21,
     paddingLeft: 20,
@@ -437,5 +544,34 @@ const styles = StyleSheet.create({
   avatar: {
     width: SCREEN_WIDTH / 6,
     height: SCREEN_WIDTH / 6,
+  },
+  outerContainer: {
+    width: "90%",
+    borderRadius: 10,
+    marginTop: 4,
+  },
+  innerContainer: {
+    borderWidth: 1,
+    backgroundColor: "white",
+    borderRadius: 10,
+    padding: "4%",
+  },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+    marginBottom: 8,
+  },
+  footerRow: {
+    marginTop: 8,
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  btn: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 10,
+    fontWeight: "bold",
   },
 })
