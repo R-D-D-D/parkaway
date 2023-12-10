@@ -1,5 +1,5 @@
 import * as React from "react";
-import { View, Text, StyleProp, ViewStyle, TextStyle } from "react-native";
+import { StyleProp, Text, TextStyle, View, ViewStyle } from "react-native";
 /**
  * ? Local Imports
  */

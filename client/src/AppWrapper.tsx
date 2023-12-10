@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet } from "react-native"
+import { BottomSheetModal } from "@gorhom/bottom-sheet"
 import React, {
   useCallback,
   useContext,
@@ -6,12 +6,12 @@ import React, {
   useRef,
   useState,
 } from "react"
-import { RootStack } from "./navigation"
-import BottomSheet, { BottomSheetModal } from "@gorhom/bottom-sheet"
-import { AppContext } from "./context"
-import { IBottomsheetNotification } from "./hooks/useNotification"
-import { colors } from "./global/styles"
+import { StyleSheet, Text, View } from "react-native"
 import { Button, Image } from "react-native-elements"
+import { AppContext } from "./context"
+import { colors } from "./global/styles"
+import { IBottomsheetNotification } from "./hooks/useNotification"
+import { RootStack } from "./navigation"
 
 const AppWrapper = () => {
   const { notificationQueue } = useContext(AppContext)

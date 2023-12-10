@@ -1,9 +1,4 @@
-import Axios, {
-  AxiosError,
-  AxiosInstance,
-  AxiosRequestConfig,
-  AxiosResponse,
-} from "axios"
+import Axios from "axios"
 import { config } from "../configs"
 
 export interface ApiResponse<T> {

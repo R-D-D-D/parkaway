@@ -1,10 +1,10 @@
-import { View, Text, StyleSheet } from "react-native"
 import React, { useContext, useState } from "react"
-import { AppContext } from "../../context"
+import { StyleSheet, Text, View } from "react-native"
 import { Button, Image } from "react-native-elements"
 import { ParkingLot } from "../../api/parking_lot"
-import { colors } from "../../global/styles"
 import { subscriptionApi } from "../../api/subscription"
+import { AppContext } from "../../context"
+import { colors } from "../../global/styles"
 import { showToast } from "../../utils/toast"
 
 interface IProps {

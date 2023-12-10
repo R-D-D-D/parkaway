@@ -1,27 +1,21 @@
-import React, { useState, useEffect, useCallback, useContext } from "react"
-import { View, StyleSheet, FlatList } from "react-native"
 import {
-  query,
   collection,
-  orderBy,
-  onSnapshot,
   limit,
-  setDoc,
-  doc,
-  where,
+  onSnapshot,
   or,
-  getDocs,
-  addDoc,
-  getDoc,
-  and,
+  orderBy,
+  query,
+  where
 } from "firebase/firestore"
-import { db } from "../firebase"
-import { AppContext } from "../context"
-import { Chatroom } from "./ChatScreen"
-import Spinner from "../components/Spinner"
-import { Divider, ListItem, Image, Text } from "react-native-elements"
+import React, { useContext, useEffect, useState } from "react"
+import { FlatList, StyleSheet, View } from "react-native"
+import { Divider, Image, ListItem, Text } from "react-native-elements"
 import { IMessage } from "react-native-gifted-chat"
+import Spinner from "../components/Spinner"
+import { AppContext } from "../context"
+import { db } from "../firebase"
 import { formatDate } from "../utils/date"
+import { Chatroom } from "./ChatScreen"
 
 const ChatListScreen = ({ navigation }) => {
   const [chatrooms, setChatrooms] = useState<Chatroom[]>([])

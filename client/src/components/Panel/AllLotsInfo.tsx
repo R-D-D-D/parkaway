@@ -1,12 +1,12 @@
-import { StyleSheet, Text, View, ScrollView } from "react-native"
 import React, { useContext, useMemo } from "react"
-import InfoTag from "../InfoTag"
+import { ScrollView, StyleSheet, Text, View } from "react-native"
 import { Divider, ListItem } from "react-native-elements"
-import ParkingActionDisplay from "../ParkingActionDisplay"
 import { ParkingAction } from "../../api/parking_action"
 import { ParkingLot } from "../../api/parking_lot"
-import { SCREEN_HEIGHT } from "../../global/styles"
 import { AppContext } from "../../context"
+import { SCREEN_HEIGHT } from "../../global/styles"
+import InfoTag from "../InfoTag"
+import ParkingActionDisplay from "../ParkingActionDisplay"
 
 interface IProps {
   parkingActions: ParkingAction[]

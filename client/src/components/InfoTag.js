@@ -1,6 +1,6 @@
-import { StyleSheet, Text, View } from "react-native"
 import React from "react"
-import { SCREEN_HEIGHT, colors, parameters } from "../global/styles"
+import { StyleSheet, Text, View } from "react-native"
+import { SCREEN_HEIGHT, colors } from "../global/styles"
 
 const InfoTag = (props) => {
   const { text, style } = props

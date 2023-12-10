@@ -4,12 +4,11 @@ import {
   collection,
   doc,
   getDoc,
-  runTransaction,
-  updateDoc,
+  updateDoc
 } from "firebase/firestore"
 import { IUser } from "../context"
-import { ParkingLot } from "./parking_lot"
 import { db } from "../firebase"
+import { ParkingLot } from "./parking_lot"
 
 export type ParkingAction = {
   id: string

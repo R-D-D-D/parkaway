@@ -1,28 +1,13 @@
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native"
-import React, { useContext, useEffect, useRef, useState } from "react"
-import { Button, Input } from "react-native-elements"
-import { colors } from "../global/styles"
-import { userApi } from "../api/user"
-import { AppContext } from "../context"
-import Toast from "react-native-root-toast"
-import { showToast } from "../utils/toast"
 import { useNavigation } from "@react-navigation/native"
 import { NativeStackNavigationProp } from "@react-navigation/native-stack"
+import React, { useContext, useEffect, useState } from "react"
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native"
+import { Button, Input } from "react-native-elements"
+import { userApi } from "../api/user"
+import { AppContext } from "../context"
+import { colors } from "../global/styles"
 import { RootStackParamList } from "../navigation"
-import { auth, db } from "../firebase"
-import {
-  createUserWithEmailAndPassword,
-  updateProfile,
-  signInWithEmailAndPassword,
-} from "firebase/auth"
-import {
-  collection,
-  addDoc,
-  getDocs,
-  setDoc,
-  doc,
-  updateDoc,
-} from "firebase/firestore"
+import { showToast } from "../utils/toast"
 
 enum PageState {
   SIGNIN = 0,

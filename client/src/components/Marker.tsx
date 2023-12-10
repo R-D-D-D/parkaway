@@ -1,5 +1,5 @@
-import { StyleSheet, Text, View, Dimensions, Image } from "react-native"
-import { colors, parameters } from "../global/styles"
+import { StyleSheet, Text, View } from "react-native"
+import { colors } from "../global/styles"
 
 const Marker = (props) => {
   const { total, free } = props

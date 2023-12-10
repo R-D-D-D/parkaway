@@ -1,36 +1,33 @@
-import { StyleSheet, Text, View, Alert, TouchableOpacity } from "react-native"
+import { BottomSheetMethods } from "@gorhom/bottom-sheet/lib/typescript/types"
+import { useNavigation } from "@react-navigation/native"
+import { NativeStackNavigationProp } from "@react-navigation/native-stack"
+import { Avatar, ListItem } from "@rneui/themed"
+import dayjs from "dayjs"
+import * as Location from "expo-location"
+import { Timestamp, serverTimestamp } from "firebase/firestore"
+import { getDistance } from "geolib"
 import React, {
-  useCallback,
   useContext,
-  useEffect,
   useMemo,
-  useState,
+  useState
 } from "react"
-import { Image, Button, Dialog } from "react-native-elements"
-import { SCREEN_HEIGHT, SCREEN_WIDTH, colors } from "../../global/styles"
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native"
+import DashedLine from "react-native-dashed-line"
+import Icon, { IconType } from "react-native-dynamic-vector-icons"
+import { Button, Dialog, Image } from "react-native-elements"
+import { ScrollView } from "react-native-gesture-handler"
+import { Easing, Notifier } from "react-native-notifier"
+import { ParkingAction, parkingActionApi } from "../../api/parking_action"
 import { ParkingLot } from "../../api/parking_lot"
 import { AppContext, IUser } from "../../context"
-import { ParkingAction, parkingActionApi } from "../../api/parking_action"
-import { getDistance } from "geolib"
-import * as Location from "expo-location"
-import { showToast } from "../../utils/toast"
-import { formatDate } from "../../utils/date"
-import { NativeStackNavigationProp } from "@react-navigation/native-stack"
-import { ChatStackParamList, RootStackParamList } from "../../navigation"
-import { useNavigation } from "@react-navigation/native"
-import { twilioApi } from "../../api/twilio"
-import { serverTimestamp, Timestamp } from "firebase/firestore"
-import { Notifier, Easing } from "react-native-notifier"
-import useNotification, { NotificationType } from "../../hooks/useNotification"
-import Icon, { IconType } from "react-native-dynamic-vector-icons"
+import { SCREEN_HEIGHT, SCREEN_WIDTH, colors } from "../../global/styles"
 import useBooking from "../../hooks/useBooking"
-import dayjs from "dayjs"
-import { BottomSheetMethods } from "@gorhom/bottom-sheet/lib/typescript/types"
-import { Avatar, ListItem } from "@rneui/themed"
-import { ScrollView } from "react-native-gesture-handler"
-import DashedLine from "react-native-dashed-line"
-import { nameToAbbr } from "../../utils/string"
+import useNotification, { NotificationType } from "../../hooks/useNotification"
+import { ChatStackParamList } from "../../navigation"
+import { formatDate } from "../../utils/date"
 import { openMaps } from "../../utils/openMaps"
+import { nameToAbbr } from "../../utils/string"
+import { showToast } from "../../utils/toast"
 
 type SingleLotNavigationProp = NativeStackNavigationProp<
   ChatStackParamList,

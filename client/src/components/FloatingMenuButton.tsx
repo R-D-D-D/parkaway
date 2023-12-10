@@ -1,6 +1,5 @@
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native"
 import React from "react"
-import { ViewStyle } from "react-native"
+import { StyleSheet, TouchableOpacity, ViewStyle } from "react-native"
 import { colors } from "../global/styles"
 
 interface IProps {

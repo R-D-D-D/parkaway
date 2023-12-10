@@ -1,6 +1,5 @@
 import * as React from "react"
-import { View, StyleProp, ViewStyle } from "react-native"
-import Androw from "react-native-androw"
+import { StyleProp, View, ViewStyle } from "react-native"
 import Icon, { IconType } from "react-native-dynamic-vector-icons"
 /**
  * ? Local Imports

@@ -1,9 +1,8 @@
-import { StyleSheet, Text, View } from "react-native"
 import React from "react"
+import { StyleSheet, Text, View } from "react-native"
 import { Image } from "react-native-elements"
-import { formatDate } from "../utils/date"
-import { colors } from "../global/styles"
 import { ParkingAction } from "../api/parking_action"
+import { formatDate } from "../utils/date"
 
 interface IProps {
   action: ParkingAction

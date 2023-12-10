@@ -1,11 +1,11 @@
-import { StyleSheet, Text, View } from "react-native"
-import React from "react"
-import Androw from "react-native-androw"
 import RNBounceable from "@freakycoder/react-native-bounceable"
-import { SCREEN_WIDTH, colors } from "../global/styles"
+import React from "react"
+import { StyleSheet, Text, View } from "react-native"
+import Androw from "react-native-androw"
 import Icon, { IconType } from "react-native-dynamic-vector-icons"
-import { formatDate } from "../utils/date"
 import { ParkingAction } from "../api/parking_action"
+import { SCREEN_WIDTH, colors } from "../global/styles"
+import { formatDate } from "../utils/date"
 
 interface IProps {
   parkingAction: ParkingAction

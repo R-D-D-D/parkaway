@@ -1,3 +1,4 @@
+import BottomSheet from "@gorhom/bottom-sheet"
 import { useIsFocused } from "@react-navigation/core"
 import { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import * as Location from "expo-location"
@@ -9,7 +10,8 @@ import {
   useRef,
   useState,
 } from "react"
-import { Image, StyleSheet, View, Text, TouchableOpacity } from "react-native"
+import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native"
+import Icon, { IconType } from "react-native-dynamic-vector-icons"
 import MapView, {
   Callout,
   MapMarker,
@@ -34,9 +36,6 @@ import {
 import { RootStackParamList } from "../navigation"
 import { openMaps } from "../utils/openMaps"
 import { showToast } from "../utils/toast"
-import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet"
-import { SearchableDropdownInput } from "../components/SearchBarComponent"
-import Icon, { IconType } from "react-native-dynamic-vector-icons"
 
 export const LAT_DELTA = 0.005
 export const LNG_DELTA = 0.0025

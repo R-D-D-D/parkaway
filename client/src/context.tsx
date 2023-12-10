@@ -1,40 +1,31 @@
-import { createContext, useCallback, useEffect, useMemo, useState } from "react"
-import { ParkingAction, parkingActionApi } from "./api/parking_action"
-import { SigninInfo, SignupInfo } from "./screens/LogInScreen"
-import { ParkingLot, parkingApi } from "./api/parking_lot"
-import { auth } from "./firebase"
-import { useAuthState } from "react-firebase-hooks/auth"
-import {
-  useCollection,
-  useCollectionData,
-  useDocument,
-} from "react-firebase-hooks/firestore"
-import { GoogleAuthProvider, signInWithRedirect, User } from "firebase/auth"
-import { useQuery } from "@tanstack/react-query"
-import { Notifier, Easing } from "react-native-notifier"
-import {
-  query,
-  collection,
-  orderBy,
-  onSnapshot,
-  limit,
-  setDoc,
-  doc,
-  where,
-  or,
-  getDocs,
-  addDoc,
-  getDoc,
-  and,
-  updateDoc,
-  Timestamp,
-  serverTimestamp,
-  DocumentSnapshot,
-  DocumentReference,
-  CollectionReference,
-} from "firebase/firestore"
-import { db } from "./firebase"
 import { useNavigation } from "@react-navigation/native"
+import dayjs from "dayjs"
+import {
+  CollectionReference,
+  DocumentReference,
+  Timestamp,
+  and,
+  collection,
+  doc,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  setDoc,
+  where
+} from "firebase/firestore"
+import { createContext, useEffect, useMemo, useState } from "react"
+import {
+  useCollectionData,
+  useDocument
+} from "react-firebase-hooks/firestore"
+import MapView, { LatLng } from "react-native-maps"
+import { Easing, Notifier } from "react-native-notifier"
+import { ParkingAction } from "./api/parking_action"
+import { ParkingLot } from "./api/parking_lot"
+import { Subscription } from "./api/subscription"
+import { db } from "./firebase"
+import { IBooking } from "./hooks/useBooking"
 import useNotification, {
   IBottomsheetNotification,
   IBroadcastNotification,
@@ -42,11 +33,7 @@ import useNotification, {
   INotification,
   NotificationType,
 } from "./hooks/useNotification"
-import dayjs from "dayjs"
-import MapView, { LatLng } from "react-native-maps"
 import { LAT_DELTA, LNG_DELTA } from "./screens/HomeScreen"
-import { Subscription } from "./api/subscription"
-import { IBooking } from "./hooks/useBooking"
 
 export interface IUser {
   username: string

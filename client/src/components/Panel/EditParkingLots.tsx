@@ -1,17 +1,17 @@
+import { Timestamp, serverTimestamp } from "firebase/firestore"
 import React, { useState } from "react"
 import {
+  Keyboard,
+  ScrollView,
   StyleSheet,
   Text,
-  View,
-  Keyboard,
   TouchableWithoutFeedback,
-  ScrollView,
+  View,
 } from "react-native"
-import { Input, Button } from "react-native-elements"
+import { Button, Input } from "react-native-elements"
 import { ParkingLot } from "../../api/parking_lot"
 import { colors } from "../../global/styles"
 import { showToast } from "../../utils/toast"
-import { Timestamp, serverTimestamp } from "firebase/firestore"
 
 interface IProps {
   handleCreateParkingLot: (lot: Omit<ParkingLot, "id">) => Promise<void>
