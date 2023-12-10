@@ -155,10 +155,15 @@ const SingleLotInfo = (props: IProps) => {
     const handleNotify = async () => {
       if (user && otherUser) {
         try {
-          await twilioApi.createMsg({
-            text: `User ${user?.username} wants to swap parking lot with you, go in to the app to check it out!`,
-            toPhoneNumber: "+19179324155",
-          })
+          // try {
+          //   await twilioApi.createMsg({
+          //     text: `User ${user?.username} wants to swap parking lot with you, go in to the app to check it out!`,
+          //     toPhoneNumber: "+19179324155",
+          //   })
+          // } catch (e) {
+          //   console.log(e)
+          // }
+
           createSwapRequestNotification(user, otherUser)
           setOtherUser(null)
           navigation.navigate("ChatStack", {
@@ -311,7 +316,7 @@ const SingleLotInfo = (props: IProps) => {
                       source={require("../../../assets/carpark-entrance.jpg")}
                       style={{ width: 40, height: 40, borderRadius: 4 }}
                     />
-                    <View>
+                    <View style={{ marginLeft: 6 }}>
                       <Text style={{ fontWeight: "bold" }}>
                         {parkingLot.officeName}, {parkingLot.lotName}
                       </Text>
@@ -427,6 +432,7 @@ const SingleLotInfo = (props: IProps) => {
                           topDivider
                           bottomDivider
                           containerStyle={{ padding: 4 }}
+                          key={`user-${user.id}`}
                         >
                           <Avatar
                             rounded
