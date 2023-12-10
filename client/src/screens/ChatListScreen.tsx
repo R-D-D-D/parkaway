@@ -1,27 +1,21 @@
-import React, { useState, useEffect, useCallback, useContext } from "react"
-import { View, StyleSheet, FlatList } from "react-native"
 import {
-  query,
   collection,
-  orderBy,
-  onSnapshot,
   limit,
-  setDoc,
-  doc,
-  where,
+  onSnapshot,
   or,
-  getDocs,
-  addDoc,
-  getDoc,
-  and,
+  orderBy,
+  query,
+  where
 } from "firebase/firestore"
-import { db } from "../firebase"
-import { AppContext } from "../context"
-import { Chatroom } from "./ChatScreen"
-import Spinner from "../components/Spinner"
-import { Divider, ListItem, Image, Text } from "react-native-elements"
+import React, { useContext, useEffect, useState } from "react"
+import { FlatList, StyleSheet, View } from "react-native"
+import { Divider, Image, ListItem, Text } from "react-native-elements"
 import { IMessage } from "react-native-gifted-chat"
+import Spinner from "../components/Spinner"
+import { AppContext } from "../context"
+import { db } from "../firebase"
 import { formatDate } from "../utils/date"
+import { Chatroom } from "./ChatScreen"
 
 const ChatListScreen = ({ navigation }) => {
   const [chatrooms, setChatrooms] = useState<Chatroom[]>([])
@@ -29,67 +23,67 @@ const ChatListScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    if (user) {
-      const q = query(
-        collection(db, "chatrooms"),
-        or(where("userId", "==", user.id), where("otherUserId", "==", user.id)),
-        limit(50)
-      )
+    if (!user) return
 
-      const unsubscribeChatrooms = onSnapshot(q, (chatroomsSnapshot) => {
-        const unsubscribeMessagesMap = new Map()
+    const q = query(
+      collection(db, "chatrooms"),
+      or(where("userId", "==", user.id), where("otherUserId", "==", user.id)),
+      limit(50)
+    )
 
-        const newChatrooms = chatroomsSnapshot.docs.map((docSnapshot) => {
-          const chatroom = {
-            ...docSnapshot.data(),
-            id: docSnapshot.id,
-            messages: [],
-          }
-          const chatroomId = docSnapshot.id
+    const unsubscribeChatrooms = onSnapshot(q, (chatroomsSnapshot) => {
+      const unsubscribeMessagesMap = new Map()
 
-          // If we're already listening to this chatroom, unsubscribe before creating a new listener
-          if (unsubscribeMessagesMap.has(chatroomId)) {
-            unsubscribeMessagesMap.get(chatroomId)()
-            unsubscribeMessagesMap.delete(chatroomId)
-          }
-
-          const messageQuery = query(
-            collection(db, "chatrooms", chatroomId, "messages"),
-            orderBy("createdAt", "desc"),
-            limit(50)
-          )
-
-          // Listen for messages updates in each chatroom
-          const unsubscribeMessages = onSnapshot(
-            messageQuery,
-            (messagesSnapshot) => {
-              const newMessages: IMessage[] = messagesSnapshot.docs.map(
-                (docSnapshot) => docSnapshot.data()
-              )
-              chatroom.messages = newMessages
-
-              setChatrooms((prevChatrooms) =>
-                prevChatrooms.map((room) =>
-                  room.id === chatroomId ? chatroom : room
-                )
-              )
-            }
-          )
-
-          unsubscribeMessagesMap.set(chatroomId, unsubscribeMessages)
-
-          return chatroom
-        })
-
-        setChatrooms(newChatrooms as Chatroom[])
-
-        // Return a cleanup function that unsubscribes from all listeners
-        return () => {
-          unsubscribeChatrooms()
-          unsubscribeMessagesMap.forEach((unsubscribe) => unsubscribe())
+      const newChatrooms = chatroomsSnapshot.docs.map((docSnapshot) => {
+        const chatroom = {
+          ...docSnapshot.data(),
+          id: docSnapshot.id,
+          messages: [],
         }
+        const chatroomId = docSnapshot.id
+
+        // If we're already listening to this chatroom, unsubscribe before creating a new listener
+        if (unsubscribeMessagesMap.has(chatroomId)) {
+          unsubscribeMessagesMap.get(chatroomId)()
+          unsubscribeMessagesMap.delete(chatroomId)
+        }
+
+        const messageQuery = query(
+          collection(db, "chatrooms", chatroomId, "messages"),
+          orderBy("createdAt", "desc"),
+          limit(50)
+        )
+
+        // Listen for messages updates in each chatroom
+        const unsubscribeMessages = onSnapshot(
+          messageQuery,
+          (messagesSnapshot) => {
+            const newMessages: IMessage[] = messagesSnapshot.docs.map(
+              (docSnapshot) => docSnapshot.data()
+            )
+            chatroom.messages = newMessages
+
+            setChatrooms((prevChatrooms) =>
+              prevChatrooms.map((room) =>
+                room.id === chatroomId ? chatroom : room
+              )
+            )
+          }
+        )
+
+        unsubscribeMessagesMap.set(chatroomId, unsubscribeMessages)
+
+        return chatroom
       })
-    }
+
+      setChatrooms(newChatrooms as Chatroom[])
+
+      // Return a cleanup function that unsubscribes from all listeners
+      return () => {
+        unsubscribeChatrooms()
+        unsubscribeMessagesMap.forEach((unsubscribe) => unsubscribe())
+      }
+    })
   }, [user])
 
   if (loading) {

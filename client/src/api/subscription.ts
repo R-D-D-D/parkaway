@@ -1,13 +1,7 @@
 import {
-  FieldValue,
-  Timestamp,
-  addDoc,
-  collection,
   doc,
-  serverTimestamp,
-  setDoc,
+  setDoc
 } from "firebase/firestore"
-import { IUser } from "../context"
 import { db } from "../firebase"
 
 export type Subscription = {

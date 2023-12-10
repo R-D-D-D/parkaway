@@ -4,10 +4,9 @@ import {
   collection,
   serverTimestamp,
 } from "firebase/firestore"
-import React from "react"
+import { ParkingLot } from "../api/parking_lot"
 import { IUser } from "../context"
 import { db } from "../firebase"
-import { ParkingLot } from "../api/parking_lot"
 
 export interface IBooking {
   createdAt: Timestamp | null

@@ -1,4 +1,4 @@
-import { ViewStyle, StyleSheet, Dimensions, Platform } from "react-native"
+import { Dimensions, Platform, StyleSheet, ViewStyle } from "react-native"
 const { width: ScreenWidth } = Dimensions.get("screen")
 
 interface Style {

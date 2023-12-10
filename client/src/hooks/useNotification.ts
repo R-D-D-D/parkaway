@@ -1,15 +1,14 @@
-import React, { useContext } from "react"
-import { AppContext, IUser } from "../context"
 import {
+  Timestamp,
   addDoc,
   collection,
   doc,
   serverTimestamp,
   updateDoc,
-  Timestamp,
 } from "firebase/firestore"
-import { db } from "../firebase"
 import { ParkingLot } from "../api/parking_lot"
+import { IUser } from "../context"
+import { db } from "../firebase"
 
 export enum NotificationType {
   SWAP_REQUEST = 1,

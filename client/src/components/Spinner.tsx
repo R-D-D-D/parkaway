@@ -1,5 +1,5 @@
-import { StyleSheet, ActivityIndicator, View } from 'react-native'
 import React from 'react'
+import { ActivityIndicator, StyleSheet, View } from 'react-native'
 import { colors } from '../global/styles'
 
 const Spinner = () => {

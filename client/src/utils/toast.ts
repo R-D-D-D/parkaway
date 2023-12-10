@@ -1,4 +1,4 @@
-import { Notifier, Easing, NotifierComponents } from "react-native-notifier"
+import { Notifier, NotifierComponents } from "react-native-notifier"
 
 export type AlertTypes = "error" | "warn" | "info" | "success"
 

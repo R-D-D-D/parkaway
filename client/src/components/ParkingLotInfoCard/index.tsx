@@ -1,13 +1,13 @@
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native"
-import React, { useContext, useState } from "react"
-import { AppContext } from "../../context"
-import { Avatar, Image } from "react-native-elements"
-import { colors } from "../../global/styles"
-import DashedLine from "react-native-dashed-line"
-import { ListItem, Button } from "@rneui/themed"
-import { ScrollView } from "react-native-gesture-handler"
 import { SCREEN_HEIGHT } from "@gorhom/bottom-sheet"
 import { BottomSheetMethods } from "@gorhom/bottom-sheet/lib/typescript/types"
+import { Button, ListItem } from "@rneui/themed"
+import React, { useContext, useState } from "react"
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native"
+import DashedLine from "react-native-dashed-line"
+import { Avatar, Image } from "react-native-elements"
+import { ScrollView } from "react-native-gesture-handler"
+import { AppContext } from "../../context"
+import { colors } from "../../global/styles"
 
 interface IProps {
   bottomSheetRef: React.RefObject<BottomSheetMethods>

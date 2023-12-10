@@ -1,21 +1,13 @@
-import { Text, StyleSheet, View } from "react-native"
-import React, {
-  Component,
-  useCallback,
-  useContext,
-  useMemo,
-  useRef,
-} from "react"
-import { colors, SCREEN_WIDTH, SCREEN_HEIGHT } from "../../global/styles"
-import AllLotsInfo from "./AllLotsInfo"
-import SingleLotInfo from "./SingleLotInfo"
-import { ParkingLot } from "../../api/parking_lot"
-import EditParkingLots from "./EditParkingLots"
-import { ParkingAction } from "../../api/parking_action"
-import OfficeInfo from "./OfficeInfo"
-import { AppContext } from "../../context"
-import BottomSheet from "@gorhom/bottom-sheet"
 import { BottomSheetMethods } from "@gorhom/bottom-sheet/lib/typescript/types"
+import React, {
+  useContext
+} from "react"
+import { ParkingLot } from "../../api/parking_lot"
+import { AppContext } from "../../context"
+import AllLotsInfo from "./AllLotsInfo"
+import EditParkingLots from "./EditParkingLots"
+import OfficeInfo from "./OfficeInfo"
+import SingleLotInfo from "./SingleLotInfo"
 
 export enum PanelType {
   SINGLE_LOT_INFO = 1,

@@ -1,14 +1,14 @@
-import * as React from "react"
-import { View, Text, StyleProp, ViewStyle, TextStyle } from "react-native"
-import Androw from "react-native-androw"
 import RNBounceable from "@freakycoder/react-native-bounceable"
+import * as React from "react"
+import { StyleProp, Text, TextStyle, View, ViewStyle } from "react-native"
+import Androw from "react-native-androw"
 /**
  * ? Local Imports
  */
-import styles, { _container } from "./Card.style"
-import TextContainer from "./components/TextContainer/TextContainer"
-import IconContainer from "./components/IconContainer/IconContainer"
 import { IconType } from "react-native-dynamic-vector-icons"
+import styles, { _container } from "./Card.style"
+import IconContainer from "./components/IconContainer/IconContainer"
+import TextContainer from "./components/TextContainer/TextContainer"
 
 type CustomStyleProp = StyleProp<ViewStyle> | Array<StyleProp<ViewStyle>>
 type CustomTextStyleProp = StyleProp<TextStyle> | Array<StyleProp<TextStyle>>

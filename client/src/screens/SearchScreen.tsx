@@ -1,12 +1,11 @@
 import { useNavigation } from "@react-navigation/native"
-import React, { useContext, useEffect, useState } from "react"
+import React, { useContext } from "react"
 import { StyleSheet, View } from "react-native"
 import {
   SearchBarComponent,
   SearchableDropdownInput,
 } from "../components/SearchBarComponent"
 import { AppContext } from "../context"
-import { ParkingLot, parkingApi } from "../api/parking_lot"
 import { LAT_DELTA, LNG_DELTA } from "./HomeScreen"
 
 const SearchScreen = () => {

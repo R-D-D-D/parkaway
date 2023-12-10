@@ -1,26 +1,22 @@
-import React, { useState, useEffect, useCallback, useContext } from "react"
-import { View, ScrollView, Text, Button, StyleSheet } from "react-native"
-import { Bubble, GiftedChat, Send, IMessage } from "react-native-gifted-chat"
-import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
-import FontAwesome from "react-native-vector-icons/FontAwesome"
+import { CommonActions } from "@react-navigation/native"
 import {
-  query,
   collection,
-  orderBy,
-  onSnapshot,
-  limit,
-  setDoc,
   doc,
-  where,
-  or,
-  getDocs,
-  addDoc,
   getDoc,
-  and,
+  limit,
+  onSnapshot,
+  orderBy,
+  query,
+  setDoc,
 } from "firebase/firestore"
-import { db } from "../firebase"
+import React, { useContext, useEffect, useState } from "react"
+import { StyleSheet, View } from "react-native"
+import { Bubble, GiftedChat, IMessage, Send } from "react-native-gifted-chat"
+import FontAwesome from "react-native-vector-icons/FontAwesome"
+import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
 import { AppContext } from "../context"
-import { CommonActions, useNavigationState } from "@react-navigation/native"
+import { db } from "../firebase"
+import { generateChatroomId } from "../utils/chatroom"
 
 export interface Chatroom {
   id: string
@@ -63,76 +59,58 @@ const ChatScreen = ({ route, navigation }) => {
       )
     }
     const init = async () => {
-      if (user) {
-        let chatroomId = ""
-        if (routeChatroom) {
-          chatroomId = routeChatroom.id
-          setChatroom(routeChatroom)
-        } else {
-          const chatroomQuery = query(
-            collection(db, "chatrooms"),
-            or(
-              and(
-                where("userId", "==", user.id),
-                where("otherUserId", "==", otherUser.id)
-              ),
-              and(
-                where("userId", "==", otherUser.id),
-                where("otherUserId", "==", user.id)
-              )
-            )
-          )
-          const querySnapshot = await getDocs(chatroomQuery)
+      if (!user) return
 
-          if (querySnapshot.size === 0) {
-            // no chatroom has been created
-            const chatroomParams = {
-              messages: [],
-              userId: user.id,
-              username: user.username,
-              otherUserId: otherUser.id,
-              otherUsername: otherUser.username,
-            }
-            const docRef = await addDoc(
-              collection(db, "chatrooms"),
-              chatroomParams
-            )
-            chatroomId = docRef.id
-            setChatroom({
-              id: docRef.id,
-              ...chatroomParams,
-            })
-          } else if (querySnapshot.size === 1) {
-            querySnapshot.forEach((doc) => {
-              // doc.data() is never undefined for query doc snapshots
-              setChatroom({ ...doc.data(), id: doc.id } as Chatroom)
-              chatroomId = doc.id
-            })
-          } else {
-            throw new Error("more than one chatroom found for the same person")
-          }
-        }
-
-        if (chatroomId !== "") {
-          const messageQuery = query(
-            collection(db, "chatrooms", chatroomId, "messages"),
-            orderBy("createdAt", "desc"),
-            limit(50)
-          )
-
-          const unsubscribe = onSnapshot(messageQuery, (QuerySnapshot) => {
-            const fetchedMessages: IMessage[] = []
-            QuerySnapshot.forEach((doc) => {
-              fetchedMessages.push({
-                ...doc.data(),
-                createdAt: doc.data().createdAt.toDate(),
-              })
-            })
-            setMessages(fetchedMessages)
+      const chatroomId = routeChatroom
+        ? routeChatroom.id
+        : generateChatroomId({
+            userId: user?.id,
+            otherUserId: otherUser?.id,
           })
-          return () => unsubscribe()
+
+      if (routeChatroom) {
+        setChatroom(routeChatroom)
+      } else {
+        const docRef = doc(db, "chatrooms", chatroomId)
+        const docSnap = await getDoc(docRef)
+
+        if (!docSnap.exists()) {
+          // no chatroom has been created
+          const chatroomParams = {
+            messages: [],
+            userId: user.id,
+            username: user.username,
+            otherUserId: otherUser.id,
+            otherUsername: otherUser.username,
+          }
+          await setDoc(docRef, chatroomParams)
+          setChatroom({
+            id: chatroomId,
+            ...chatroomParams,
+          })
+        } else {
+          const doc = docSnap.data()
+          setChatroom({ ...doc, id: doc.id } as Chatroom)
         }
       }
+
+      const messageQuery = query(
+        collection(db, "chatrooms", chatroomId, "messages"),
+        orderBy("createdAt", "desc"),
+        limit(50)
+      )
+
+      const unsubscribe = onSnapshot(messageQuery, (QuerySnapshot) => {
+        const fetchedMessages: IMessage[] = []
+        QuerySnapshot.forEach((doc) => {
+          fetchedMessages.push({
+            ...doc.data(),
+            createdAt: doc.data().createdAt.toDate(),
+          })
+        })
+        setMessages(fetchedMessages)
+      })
+      return () => unsubscribe()
     }
 
     init()
