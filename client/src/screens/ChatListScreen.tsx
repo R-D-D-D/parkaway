@@ -29,67 +29,67 @@ const ChatListScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    if (user) {
-      const q = query(
-        collection(db, "chatrooms"),
-        or(where("userId", "==", user.id), where("otherUserId", "==", user.id)),
-        limit(50)
-      )
+    if (!user) return
 
-      const unsubscribeChatrooms = onSnapshot(q, (chatroomsSnapshot) => {
-        const unsubscribeMessagesMap = new Map()
+    const q = query(
+      collection(db, "chatrooms"),
+      or(where("userId", "==", user.id), where("otherUserId", "==", user.id)),
+      limit(50)
+    )
 
-        const newChatrooms = chatroomsSnapshot.docs.map((docSnapshot) => {
-          const chatroom = {
-            ...docSnapshot.data(),
-            id: docSnapshot.id,
-            messages: [],
-          }
-          const chatroomId = docSnapshot.id
+    const unsubscribeChatrooms = onSnapshot(q, (chatroomsSnapshot) => {
+      const unsubscribeMessagesMap = new Map()
 
-          // If we're already listening to this chatroom, unsubscribe before creating a new listener
-          if (unsubscribeMessagesMap.has(chatroomId)) {
-            unsubscribeMessagesMap.get(chatroomId)()
-            unsubscribeMessagesMap.delete(chatroomId)
-          }
-
-          const messageQuery = query(
-            collection(db, "chatrooms", chatroomId, "messages"),
-            orderBy("createdAt", "desc"),
-            limit(50)
-          )
-
-          // Listen for messages updates in each chatroom
-          const unsubscribeMessages = onSnapshot(
-            messageQuery,
-            (messagesSnapshot) => {
-              const newMessages: IMessage[] = messagesSnapshot.docs.map(
-                (docSnapshot) => docSnapshot.data()
-              )
-              chatroom.messages = newMessages
-
-              setChatrooms((prevChatrooms) =>
-                prevChatrooms.map((room) =>
-                  room.id === chatroomId ? chatroom : room
-                )
-              )
-            }
-          )
-
-          unsubscribeMessagesMap.set(chatroomId, unsubscribeMessages)
-
-          return chatroom
-        })
-
-        setChatrooms(newChatrooms as Chatroom[])
-
-        // Return a cleanup function that unsubscribes from all listeners
-        return () => {
-          unsubscribeChatrooms()
-          unsubscribeMessagesMap.forEach((unsubscribe) => unsubscribe())
+      const newChatrooms = chatroomsSnapshot.docs.map((docSnapshot) => {
+        const chatroom = {
+          ...docSnapshot.data(),
+          id: docSnapshot.id,
+          messages: [],
         }
+        const chatroomId = docSnapshot.id
+
+        // If we're already listening to this chatroom, unsubscribe before creating a new listener
+        if (unsubscribeMessagesMap.has(chatroomId)) {
+          unsubscribeMessagesMap.get(chatroomId)()
+          unsubscribeMessagesMap.delete(chatroomId)
+        }
+
+        const messageQuery = query(
+          collection(db, "chatrooms", chatroomId, "messages"),
+          orderBy("createdAt", "desc"),
+          limit(50)
+        )
+
+        // Listen for messages updates in each chatroom
+        const unsubscribeMessages = onSnapshot(
+          messageQuery,
+          (messagesSnapshot) => {
+            const newMessages: IMessage[] = messagesSnapshot.docs.map(
+              (docSnapshot) => docSnapshot.data()
+            )
+            chatroom.messages = newMessages
+
+            setChatrooms((prevChatrooms) =>
+              prevChatrooms.map((room) =>
+                room.id === chatroomId ? chatroom : room
+              )
+            )
+          }
+        )
+
+        unsubscribeMessagesMap.set(chatroomId, unsubscribeMessages)
+
+        return chatroom
       })
-    }
+
+      setChatrooms(newChatrooms as Chatroom[])
+
+      // Return a cleanup function that unsubscribes from all listeners
+      return () => {
+        unsubscribeChatrooms()
+        unsubscribeMessagesMap.forEach((unsubscribe) => unsubscribe())
+      }
+    })
   }, [user])
 
   if (loading) {
