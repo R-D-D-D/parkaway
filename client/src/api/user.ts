@@ -27,9 +27,8 @@ const formatFirebaseUserToIUser = ({
   id: firebaseUser.uid,
 })
 
-const isUserAdmin = async (user: User): Promise<boolean> => {
-  const { uid } = user
-  const docRef = doc(db, "user_admin", uid)
+const isUserAdmin = async (email: string): Promise<boolean> => {
+  const docRef = doc(db, "user_admin", email)
   const docSnap = await getDoc(docRef)
   return docSnap.exists()
 }
@@ -72,6 +71,8 @@ export const userApi = {
     try {
       const { email, userPassword } = params
       if (!email || !userPassword) throw new Error()
+
+      // throws error if fail auth
       const res = await signInWithEmailAndPassword(auth, email, userPassword)
 
       const { user } = res
@@ -81,7 +82,7 @@ export const userApi = {
         data: formatFirebaseUserToIUser({
           firebaseUser: user,
           userPassword,
-          isAdmin: await isUserAdmin(user),
+          isAdmin: await isUserAdmin(email),
         }),
       }
     } catch (e) {
