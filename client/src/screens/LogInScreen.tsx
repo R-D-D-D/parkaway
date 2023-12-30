@@ -116,7 +116,7 @@ const LogInScreen = () => {
             navigation.navigate("Main", { screen: "Home" })
           } else {
             showToast({
-              title: resp.status,
+              title: resp.message ?? resp.status,
               type: "error",
             })
           }
