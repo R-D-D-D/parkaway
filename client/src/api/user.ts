@@ -1,17 +1,100 @@
 import { IUser } from "../context"
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  User,
+} from "firebase/auth"
 import { SigninInfo, SignupInfo } from "../screens/LogInScreen"
 import { ApiResponse, request } from "./common"
+import { auth, db } from "../firebase"
+import { FirebaseError } from "firebase/app"
+import { doc, getDoc } from "firebase/firestore"
+
+const formatFirebaseUserToIUser = ({
+  firebaseUser,
+  userPassword,
+  isAdmin = false,
+}: {
+  firebaseUser: User
+  userPassword: string
+  isAdmin?: boolean
+}): IUser => ({
+  username: firebaseUser.displayName ?? "",
+  email: firebaseUser.email ?? "",
+  userPassword,
+  createdAt: firebaseUser.metadata.creationTime ?? "",
+  isAdmin,
+  id: firebaseUser.uid,
+})
+
+const isUserAdmin = async (user: User): Promise<boolean> => {
+  const { uid } = user
+  const docRef = doc(db, "user_admin", uid)
+  const docSnap = await getDoc(docRef)
+  return docSnap.exists()
+}
 
 export const userApi = {
   createUser: async (params: SignupInfo): Promise<ApiResponse<IUser>> => {
-    return (await request.post<ApiResponse<IUser>>("/users", params)).data
+    try {
+      const { email, userPassword } = params
+      if (!email || !userPassword) throw new Error()
+
+      const res = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        userPassword
+      )
+      const { user } = res
+
+      return {
+        status: "success",
+        data: formatFirebaseUserToIUser({
+          firebaseUser: user,
+          userPassword,
+        }),
+      }
+    } catch (e) {
+      console.error(e)
+      let message = ""
+      if (e instanceof FirebaseError) {
+        message = e.message
+      }
+      return {
+        status: "failed",
+        message,
+        data: {} as IUser,
+      }
+    }
   },
 
   signinUser: async (params: SigninInfo): Promise<ApiResponse<IUser>> => {
-    return (await request.post<ApiResponse<IUser>>("/signin", params)).data
-  },
+    try {
+      const { email, userPassword } = params
+      if (!email || !userPassword) throw new Error()
+      const res = await signInWithEmailAndPassword(auth, email, userPassword)
 
-  getUser: async (userId: number): Promise<ApiResponse<IUser>> => {
-    return (await request.get<ApiResponse<IUser>>(`/user/${userId}`)).data
+      const { user } = res
+
+      return {
+        status: "success",
+        data: formatFirebaseUserToIUser({
+          firebaseUser: user,
+          userPassword,
+          isAdmin: await isUserAdmin(user),
+        }),
+      }
+    } catch (e) {
+      console.error(e)
+      let message = ""
+      if (e instanceof FirebaseError) {
+        message = e.message
+      }
+      return {
+        status: "failed",
+        message,
+        data: {} as IUser,
+      }
+    }
   },
 }

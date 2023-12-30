@@ -41,7 +41,7 @@ export interface IUser {
   userPassword: string
   createdAt: string
   isAdmin: boolean
-  id: number
+  id: number | string
 }
 
 type IProps = {
