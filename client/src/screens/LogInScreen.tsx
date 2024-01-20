@@ -112,7 +112,7 @@ const LogInScreen = () => {
           const resp = await userApi.signinUser(signinInfo)
           // console.log("[LoginScreen: signin user call]", resp)
           if (resp.status === "success") {
-            setUser(resp.data)
+            // setUser(resp.data)
             navigation.navigate("Main", { screen: "Home" })
           } else {
             showToast({
@@ -136,7 +136,7 @@ const LogInScreen = () => {
           const resp = await userApi.createUser(signupInfo)
           // console.log("[LoginScreen: create user call]", resp)
           if (resp.status === "success") {
-            setUser(resp.data)
+            // setUser(resp.data)
             navigation.navigate("Main", { screen: "Home" })
           } else {
             showToast({ title: resp.status, type: "error" })
@@ -149,47 +149,6 @@ const LogInScreen = () => {
       }
     }
   }
-
-  // const submit = async () => {
-  //   if (pageState === PageState.SIGNIN) {
-  //     if (signinInfo?.email && signinInfo?.userPassword) {
-  //       signInWithEmailAndPassword(
-  //         auth,
-  //         signinInfo.email,
-  //         signinInfo.userPassword
-  //       ).then(() => {
-  //         navigation.navigate("Main", { screen: "Home" })
-  //       })
-  //     }
-  //   } else {
-  //     if (
-  //       signupInfo?.email &&
-  //       signupInfo?.userPassword &&
-  //       signupInfo?.username &&
-  //       signupInfo?.confirmUserPassword === signupInfo.userPassword
-  //     ) {
-  //       createUserWithEmailAndPassword(
-  //         auth,
-  //         signupInfo.email,
-  //         signupInfo.userPassword
-  //       ).then((userCredential) => {
-  //         const user = userCredential.user
-  //         setDoc(doc(db, "users", user.uid), {
-  //           uid: user.uid,
-  //           email: signupInfo.email,
-  //           name: signupInfo.username,
-  //           req: [],
-  //           realFriend: [],
-  //         })
-  //         updateProfile(user, {
-  //           displayName: signupInfo.username,
-  //           // photoURL: avatar ? avatar : 'https://robohash.org/default',
-  //         })
-  //         navigation.navigate("Main", { screen: "Home" })
-  //       })
-  //     }
-  //   }
-  // }
 
   return (
     <View style={styles.container}>

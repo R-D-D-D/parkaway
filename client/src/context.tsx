@@ -12,19 +12,17 @@ import {
   query,
   serverTimestamp,
   setDoc,
-  where
+  where,
 } from "firebase/firestore"
 import { createContext, useEffect, useMemo, useState } from "react"
-import {
-  useCollectionData,
-  useDocument
-} from "react-firebase-hooks/firestore"
+import { useCollectionData, useDocument } from "react-firebase-hooks/firestore"
+import { useAuthState } from "react-firebase-hooks/auth"
 import MapView, { LatLng } from "react-native-maps"
 import { Easing, Notifier } from "react-native-notifier"
 import { ParkingAction } from "./api/parking_action"
 import { ParkingLot } from "./api/parking_lot"
 import { Subscription } from "./api/subscription"
-import { db } from "./firebase"
+import { auth, db } from "./firebase"
 import { IBooking } from "./hooks/useBooking"
 import useNotification, {
   IBottomsheetNotification,
@@ -34,11 +32,12 @@ import useNotification, {
   NotificationType,
 } from "./hooks/useNotification"
 import { LAT_DELTA, LNG_DELTA } from "./screens/HomeScreen"
+import { onAuthStateChanged } from "firebase/auth"
+import { formatFirebaseUserToIUser, isUserAdmin } from "./api/user"
 
 export interface IUser {
   username: string
   email: string
-  userPassword: string
   createdAt: string
   isAdmin: boolean
   id: number | string
@@ -110,6 +109,25 @@ export const AppContextProvider = ({ children }: IProps) => {
     IBottomsheetNotification[]
   >([])
 
+  const [firebaseUser, loading] = useAuthState(auth)
+  useEffect(() => {
+    const load = async () => {
+      console.log("firebaseuser", firebaseUser)
+      if (firebaseUser) {
+        setUser(
+          formatFirebaseUserToIUser({
+            firebaseUser,
+            isAdmin: await isUserAdmin(firebaseUser.email || ""),
+          })
+        )
+      } else {
+        setUser(null)
+      }
+    }
+
+    load()
+  }, [firebaseUser])
+
   const enqueueNotificationQueue = (element: IBottomsheetNotification) => {
     setNotificationQueue((prevQueue) => {
       const copy = [...prevQueue, element]
@@ -133,10 +151,6 @@ export const AppContextProvider = ({ children }: IProps) => {
       }
     })
   }
-
-  useEffect(() => {
-    console.log("queue:", notificationQueue)
-  }, [notificationQueue])
 
   const [bookings] = useCollectionData<IBooking>(
     collection(db, "bookings") as CollectionReference<IBooking, IBooking>

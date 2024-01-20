@@ -2,6 +2,7 @@ import { IUser } from "../context"
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  updateProfile,
   User,
 } from "firebase/auth"
 import { SigninInfo, SignupInfo } from "../screens/LogInScreen"
@@ -10,24 +11,21 @@ import { auth, db } from "../firebase"
 import { FirebaseError } from "firebase/app"
 import { doc, getDoc } from "firebase/firestore"
 
-const formatFirebaseUserToIUser = ({
+export const formatFirebaseUserToIUser = ({
   firebaseUser,
-  userPassword,
   isAdmin = false,
 }: {
   firebaseUser: User
-  userPassword: string
   isAdmin?: boolean
 }): IUser => ({
   username: firebaseUser.displayName ?? "",
   email: firebaseUser.email ?? "",
-  userPassword,
   createdAt: firebaseUser.metadata.creationTime ?? "",
   isAdmin,
   id: firebaseUser.uid,
 })
 
-const isUserAdmin = async (email: string): Promise<boolean> => {
+export const isUserAdmin = async (email: string): Promise<boolean> => {
   const docRef = doc(db, "user_admin", email)
   const docSnap = await getDoc(docRef)
   return docSnap.exists()
@@ -36,7 +34,7 @@ const isUserAdmin = async (email: string): Promise<boolean> => {
 export const userApi = {
   createUser: async (params: SignupInfo): Promise<ApiResponse<IUser>> => {
     try {
-      const { email, userPassword } = params
+      const { email, userPassword, username } = params
       if (!email || !userPassword) throw new Error()
 
       const res = await createUserWithEmailAndPassword(
@@ -45,12 +43,14 @@ export const userApi = {
         userPassword
       )
       const { user } = res
+      await updateProfile(user, {
+        displayName: username,
+      })
 
       return {
         status: "success",
         data: formatFirebaseUserToIUser({
           firebaseUser: user,
-          userPassword,
         }),
       }
     } catch (e) {
@@ -81,7 +81,6 @@ export const userApi = {
         status: "success",
         data: formatFirebaseUserToIUser({
           firebaseUser: user,
-          userPassword,
           isAdmin: await isUserAdmin(email),
         }),
       }
