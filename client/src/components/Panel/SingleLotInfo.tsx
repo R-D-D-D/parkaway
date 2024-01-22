@@ -6,11 +6,7 @@ import dayjs from "dayjs"
 import * as Location from "expo-location"
 import { Timestamp, serverTimestamp } from "firebase/firestore"
 import { getDistance } from "geolib"
-import React, {
-  useContext,
-  useMemo,
-  useState
-} from "react"
+import React, { useContext, useMemo, useState } from "react"
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native"
 import DashedLine from "react-native-dashed-line"
 import Icon, { IconType } from "react-native-dynamic-vector-icons"
@@ -73,7 +69,7 @@ const SingleLotInfo = (props: IProps) => {
     }
   }, [userLocation])
 
-  const hasUserBookedHere = userBooking?.parkingLotId === parkingLot.id
+  const hasUserBookedHere = userBooking?.parkingLotId === parkingLot?.id
   const currBookings = useMemo(() => {
     return parkingLot && bookings
       ? bookings.filter((booking) => booking.parkingLotId === parkingLot.id)
@@ -84,12 +80,24 @@ const SingleLotInfo = (props: IProps) => {
     const lotParkingActions = parkingActions.filter(
       (action) => action.parkingLot.id === parkingLot.id
     )
-    const freeLots =
-      parkingLot.totalLots - parkingLot.currUsers.length - currBookings.length
-    const isLotFull = freeLots === 0
-    const isAvailable = freeLots > 0
-    const isUserParkingHere =
-      parkingLot?.currUsers.find((u) => u.id === user!.id) !== undefined
+    const { freeLots, isUserParkingHere } = useMemo(
+      () => ({
+        freeLots:
+          parkingLot.totalLots -
+          parkingLot.currUsers.length -
+          currBookings.length,
+        isUserParkingHere:
+          parkingLot?.currUsers.find((u) => u.id === user!.id) !== undefined,
+      }),
+      [parkingLot, currBookings]
+    )
+    const { isLotFull, isAvailable } = useMemo(
+      () => ({
+        isLotFull: freeLots === 0,
+        isAvailable: freeLots > 0,
+      }),
+      [freeLots]
+    )
     const isUserParked =
       parkingLots.find((lot) =>
         lot.currUsers.map((u) => u.id).includes(user!.id)
@@ -106,6 +114,7 @@ const SingleLotInfo = (props: IProps) => {
       if (user) {
         setParking(true)
         if (isUserParkingHere) {
+          // means he must have clicked leave button
           broadcastLeavingAction(user, parkingLot, NotificationType.USER_LEFT)
         }
         if (!isTestMode && !isUserParkingHere) {
@@ -216,61 +225,65 @@ const SingleLotInfo = (props: IProps) => {
     }
 
     const getBtnConfig = () => {
+      if (isUserParkingHere) {
+        // if user is parking here, only action available is leave
+        return {
+          text: "Leave",
+          onClick: handlePark,
+        }
+      }
+
       if (isUserParked) {
-        if (isUserParkingHere) {
-          return {
-            text: "Leave",
-            onClick: handlePark,
-          }
-        } else {
-          return {
-            text: "",
-            onClick: () => {},
-          }
+        // if user is not parking here(since above check fails) but is parked
+        return {
+          text: "You've parked somewhere else!",
+          onClick: () => {},
         }
-      } else {
-        if (hasUserBookedHere) {
-          return {
-            text: "Reserved",
-            onClick: () => {},
-          }
+      }
+
+      if (hasUserBookedHere) {
+        // user booked here, so show reserved status
+        return {
+          text: "Reserved",
+          onClick: () => {},
         }
-        if (expandUserList) {
-          return {
-            text: "Close",
-            onClick: hideUserList,
-          }
+      }
+
+      if (expandUserList) {
+        // if user list is displayed for swapping, only action is to Close it
+        return {
+          text: "Close",
+          onClick: hideUserList,
         }
-        if (isLotFull) {
-          return {
-            text: "Swap",
-            onClick: showUserList,
-          }
+      }
+
+      if (isLotFull) {
+        // user is not parked so he can swap
+        return {
+          text: "Swap",
+          onClick: showUserList,
         }
-        if (isUserParkingHere) {
-          return {
-            text: "Leave",
-            onClick: handlePark,
-          }
+      }
+
+      if (isUserNear || isTestMode) {
+        // lot is not full and user is near or is test mode
+        return {
+          text: "Park",
+          onClick: handlePark,
         }
-        if (isUserNear || isTestMode) {
-          return {
-            text: "Park",
-            onClick: handlePark,
-          }
-        } else {
-          if (!userBooking) {
-            return {
-              text: "Reserve",
-              onClick: handleBook,
-            }
-          } else {
-            return {
-              text: "",
-              onClick: () => {},
-            }
-          }
+      }
+
+      if (!userBooking) {
+        // user havent booked, haven't parked, so he can reserve
+        return {
+          text: "Reserve",
+          onClick: handleBook,
         }
+      }
+
+      return {
+        text: "",
+        onClick: () => {},
       }
     }
 
@@ -304,54 +317,61 @@ const SingleLotInfo = (props: IProps) => {
                 ])}
               >
                 <View style={styles.headerRow}>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                    }}
-                  >
-                    <Image
-                      source={require("../../../assets/carpark-entrance.jpg")}
-                      style={{ width: 40, height: 40, borderRadius: 4 }}
-                    />
-                    <View style={{ marginLeft: 6 }}>
-                      <Text style={{ fontWeight: "bold" }}>
-                        {parkingLot.officeName}, {parkingLot.lotName}
-                      </Text>
-                      <Text style={{ color: colors.grey2, lineHeight: 22 }}>
-                        12 minutes e-clearance
-                      </Text>
-                    </View>
-                  </View>
+                  <Image
+                    source={require("../../../assets/carpark-entrance.jpg")}
+                    style={{ width: 50, height: 50, borderRadius: 4 }}
+                  />
                   <View>
-                    <Button
-                      type="solid"
-                      buttonStyle={{
-                        backgroundColor: colors.blue1,
-                        padding: 10,
-                        borderRadius: 20,
+                    <Text
+                      style={{
+                        fontSize: 16,
+                        fontWeight: "bold",
+                        width: "100%",
                       }}
-                      icon={
-                        <Icon
-                          name={"directions"}
-                          type={IconType.MaterialCommunityIcons}
-                          size={18}
-                          color={"white"}
-                        />
-                      }
-                      titleStyle={{
-                        fontSize: 14,
-                        marginLeft: 6,
+                    >
+                      {parkingLot.officeName}
+                    </Text>
+                    <Text
+                      style={{
+                        width: "100%",
+                        color: colors.grey2,
+                        lineHeight: 22,
                       }}
-                      title="Direction"
-                      onPress={() => {
-                        openMaps({
-                          latitude: parkingLot.latitude,
-                          longitude: parkingLot.longitude,
-                        })
-                      }}
-                    />
+                    >
+                      {parkingLot.lotName}
+                    </Text>
                   </View>
                 </View>
+                <Button
+                  type="solid"
+                  buttonStyle={{
+                    backgroundColor: colors.blue1,
+                    padding: 6,
+                    borderRadius: 20,
+                    width: 120,
+                    marginBottom: 8,
+                    marginTop: 8,
+                  }}
+                  icon={
+                    <Icon
+                      name={"directions"}
+                      type={IconType.MaterialCommunityIcons}
+                      size={18}
+                      color={"white"}
+                    />
+                  }
+                  titleStyle={{
+                    fontSize: 14,
+                    marginLeft: 6,
+                  }}
+                  title="Direction"
+                  onPress={() => {
+                    openMaps({
+                      latitude: parkingLot.latitude,
+                      longitude: parkingLot.longitude,
+                    })
+                  }}
+                />
                 <DashedLine
                   dashLength={2}
                   dashThickness={1}
@@ -561,9 +581,7 @@ const styles = StyleSheet.create({
   },
   headerRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
     gap: 12,
-    marginBottom: 8,
   },
   footerRow: {
     marginTop: 8,

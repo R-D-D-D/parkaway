@@ -296,7 +296,7 @@ const HomeScreen = ({ navigation }) => {
 
   // variables
   const snapPoints = useMemo(
-    () => [`${(200 / SCREEN_HEIGHT) * 100}%`, "40%", "65%"],
+    () => [`${(280 / SCREEN_HEIGHT) * 100}%`, "40%", "75%"],
     []
   )
 

@@ -44,5 +44,6 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: "#f5f5f5",
     marginTop: "15%",
+    position: "relative",
   },
 })
