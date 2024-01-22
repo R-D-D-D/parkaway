@@ -1,6 +1,10 @@
 import React from "react"
 import { StyleProp, View, ViewStyle } from "react-native"
 import SearchableDropdown from "react-native-searchable-dropdown"
+import { Button, Icon } from "react-native-elements"
+import { IconType } from "react-native-dynamic-vector-icons"
+import { useNavigation } from "@react-navigation/native"
+import { TouchableOpacity } from "react-native"
 
 export interface SearchBarComponentProps {
   data: SearchableDropdownInput[]
@@ -18,6 +22,8 @@ export const SearchBarComponent: React.FC<SearchBarComponentProps> = ({
   onItemSelect,
   containerStyle,
 }) => {
+  const navigation = useNavigation()
+
   return (
     <View style={containerStyle}>
       <SearchableDropdown
@@ -25,7 +31,11 @@ export const SearchBarComponent: React.FC<SearchBarComponentProps> = ({
         // Change listner on the searchable input
         onItemSelect={onItemSelect}
         // Called after the selection from the dropdown
-        containerStyle={{ padding: 5, borderRadius: 10 }}
+        containerStyle={{
+          padding: 5,
+          borderRadius: 10,
+          // backgroundColor: "transparent",
+        }}
         // Suggestion container style
         textInputStyle={{
           // Inserted text style
@@ -34,8 +44,9 @@ export const SearchBarComponent: React.FC<SearchBarComponentProps> = ({
           borderColor: "#ccc",
           backgroundColor: "#FAF7F6",
           borderRadius: 20,
+          width: "90%",
+          marginLeft: "auto",
         }}
-        onPress={() => console.log("asdoifj")}
         listProps={{}}
         itemStyle={{
           // Single dropdown item style
@@ -64,6 +75,29 @@ export const SearchBarComponent: React.FC<SearchBarComponentProps> = ({
         underlineColorAndroid="transparent"
         // To remove the underline from the android input
       />
+      <TouchableOpacity
+        style={{
+          // padding: 6,
+          // borderRadius: 20,
+          width: 50,
+          height: 50,
+          // marginBottom: 8,
+          // marginTop: 8,
+          position: "absolute",
+          left: 0,
+          top: 12,
+        }}
+        onPress={() => {
+          navigation.navigate("Home")
+        }}
+      >
+        <Icon
+          name={"chevron-left"}
+          type={IconType.MaterialCommunityIcons}
+          size={30}
+          color={"black"}
+        />
+      </TouchableOpacity>
     </View>
   )
 }

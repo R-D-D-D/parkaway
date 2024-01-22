@@ -109,24 +109,29 @@ export const AppContextProvider = ({ children }: IProps) => {
     IBottomsheetNotification[]
   >([])
 
-  const [firebaseUser, loading] = useAuthState(auth)
-  useEffect(() => {
-    const load = async () => {
-      console.log("firebaseuser", firebaseUser)
-      if (firebaseUser) {
-        setUser(
-          formatFirebaseUserToIUser({
-            firebaseUser,
-            isAdmin: await isUserAdmin(firebaseUser.email || ""),
-          })
-        )
-      } else {
-        setUser(null)
-      }
-    }
+  // const [firebaseUser, loading] = useAuthState(auth)
+  // useEffect(() => {
+  //   const load = async () => {
+  //     if (firebaseUser) {
+  //       console.log(
+  //         formatFirebaseUserToIUser({
+  //           firebaseUser,
+  //           isAdmin: await isUserAdmin(firebaseUser.email || ""),
+  //         })
+  //       )
+  //       setUser(
+  //         formatFirebaseUserToIUser({
+  //           firebaseUser,
+  //           isAdmin: await isUserAdmin(firebaseUser.email || ""),
+  //         })
+  //       )
+  //     } else {
+  //       setUser(null)
+  //     }
+  //   }
 
-    load()
-  }, [firebaseUser])
+  //   load()
+  // }, [firebaseUser])
 
   const enqueueNotificationQueue = (element: IBottomsheetNotification) => {
     setNotificationQueue((prevQueue) => {

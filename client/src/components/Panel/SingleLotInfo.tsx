@@ -322,40 +322,56 @@ const SingleLotInfo = (props: IProps) => {
                     style={{ width: 50, height: 50, borderRadius: 4 }}
                   />
                   <View>
-                    <Text style={{ fontWeight: "bold", width: "100%" }}>
-                      {parkingLot.officeName}, {parkingLot.lotName}
+                    <Text
+                      style={{
+                        fontSize: 16,
+                        fontWeight: "bold",
+                        width: "100%",
+                      }}
+                    >
+                      {parkingLot.officeName}
                     </Text>
-                    <Button
-                      type="solid"
-                      buttonStyle={{
-                        backgroundColor: colors.blue1,
-                        padding: 6,
-                        borderRadius: 20,
-                        width: 120,
-                        marginTop: 4,
+                    <Text
+                      style={{
+                        width: "100%",
+                        color: colors.grey2,
+                        lineHeight: 22,
                       }}
-                      icon={
-                        <Icon
-                          name={"directions"}
-                          type={IconType.MaterialCommunityIcons}
-                          size={18}
-                          color={"white"}
-                        />
-                      }
-                      titleStyle={{
-                        fontSize: 14,
-                        marginLeft: 6,
-                      }}
-                      title="Direction"
-                      onPress={() => {
-                        openMaps({
-                          latitude: parkingLot.latitude,
-                          longitude: parkingLot.longitude,
-                        })
-                      }}
-                    />
+                    >
+                      {parkingLot.lotName}
+                    </Text>
                   </View>
                 </View>
+                <Button
+                  type="solid"
+                  buttonStyle={{
+                    backgroundColor: colors.blue1,
+                    padding: 6,
+                    borderRadius: 20,
+                    width: 120,
+                    marginBottom: 8,
+                    marginTop: 8,
+                  }}
+                  icon={
+                    <Icon
+                      name={"directions"}
+                      type={IconType.MaterialCommunityIcons}
+                      size={18}
+                      color={"white"}
+                    />
+                  }
+                  titleStyle={{
+                    fontSize: 14,
+                    marginLeft: 6,
+                  }}
+                  title="Direction"
+                  onPress={() => {
+                    openMaps({
+                      latitude: parkingLot.latitude,
+                      longitude: parkingLot.longitude,
+                    })
+                  }}
+                />
                 <DashedLine
                   dashLength={2}
                   dashThickness={1}
@@ -566,7 +582,6 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: "row",
     gap: 12,
-    marginBottom: 8,
   },
   footerRow: {
     marginTop: 8,
