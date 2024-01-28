@@ -14,13 +14,28 @@
     },
     "assetBundlePatterns": ["**/*"],
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.blackjavascript.parkaway",
       "config": {
         "googleMapsApiKey": "AIzaSyDaLT3-v8kGzxjrwhYSbuisTY-rzP-DNAY"
       },
-      "icon": "./assets/icon.png"
+      "icon": "./assets/icon.png",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Your location will be used to show you parking lots near you",
+        "NSLocationAlwaysUsageDescription": "Your location will be used to show you parking lots near you",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Your location will be used to show you parking lots near you"
+      }
     },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Your location will be used to show you parking lots near you",
+          "locationAlwaysPermission": "Your location will be used to show you parking lots near you",
+          "locationWhenInUsePermission": "Your location will be used to show you parking lots near you"
+        }
+      ]
+    ],
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",

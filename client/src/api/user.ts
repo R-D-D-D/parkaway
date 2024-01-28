@@ -3,6 +3,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   updateProfile,
+  deleteUser,
   User,
 } from "firebase/auth"
 import { SigninInfo, SignupInfo } from "../screens/LogInScreen"
@@ -64,6 +65,14 @@ export const userApi = {
         message,
         data: {} as IUser,
       }
+    }
+  },
+
+  deleteUser: async () => {
+    try {
+      await auth.currentUser?.delete()
+    } catch (e) {
+      console.log(e)
     }
   },
 

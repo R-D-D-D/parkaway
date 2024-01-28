@@ -36,6 +36,7 @@ import {
 import { RootStackParamList } from "../navigation"
 import { openMaps } from "../utils/openMaps"
 import { showToast } from "../utils/toast"
+import { Button } from "react-native-elements"
 
 export const LAT_DELTA = 0.005
 export const LNG_DELTA = 0.0025
@@ -349,16 +350,7 @@ const HomeScreen = ({ navigation }) => {
           <FloatingMenuBtn
             style={styles.navigateBtn}
             onPress={() => {
-              if (calloutShown) {
-                const parkingLot = parkingLots.find(
-                  ({ id }) => id === calloutShown
-                )
-                if (!parkingLot) return
-                const { latitude, longitude } = parkingLot
-                openMaps({ latitude, longitude })
-              } else {
-                handleCenter()
-              }
+              handleCenter()
             }}
           >
             <Image

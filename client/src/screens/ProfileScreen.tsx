@@ -2,13 +2,15 @@ import { useNavigation } from "@react-navigation/native"
 import { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import React, { useContext, useEffect, useState } from "react"
 import { ScrollView, StyleSheet, Text, View } from "react-native"
-import { Button, Image } from "react-native-elements"
+import { Button, Dialog, Image } from "react-native-elements"
 import { Notifier } from "react-native-notifier"
 import { ParkingAction } from "../api/parking_action"
 import ParkingDurationDisplay from "../components/ParkingDurationDisplay"
 import { AppContext } from "../context"
 import { SCREEN_HEIGHT, SCREEN_WIDTH, colors } from "../global/styles"
 import { RootStackParamList } from "../navigation"
+import Icon, { IconType } from "react-native-dynamic-vector-icons"
+import { userApi } from "../api/user"
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -21,6 +23,7 @@ const ProfileScreen = () => {
   const [filteredParkingActions, setFilteredParkingActions] = useState<
     ParkingAction[][]
   >([])
+  const [visible, setVisible] = useState(false)
 
   useEffect(() => {
     const refreshDisplay = async () => {
@@ -48,6 +51,20 @@ const ProfileScreen = () => {
     <View style={styles.container}>
       {user ? (
         <View style={styles.container}>
+          <View
+            style={{
+              marginLeft: "auto",
+              marginRight: 10,
+              marginTop: SCREEN_HEIGHT * 0.07,
+            }}
+          >
+            <Icon
+              name={"delete"}
+              type={IconType.MaterialCommunityIcons}
+              size={30}
+              onPress={() => setVisible(true)}
+            />
+          </View>
           <View style={styles.basicInfo}>
             <Image
               source={require("../../assets/man.png")}
@@ -88,6 +105,28 @@ const ProfileScreen = () => {
               Notifier.clearQueue(true)
             }}
           />
+          <Dialog
+            isVisible={visible}
+            onBackdropPress={() => setVisible(!visible)}
+          >
+            <Dialog.Title title="Are you sure to delete your account?" />
+            <Dialog.Actions>
+              <Dialog.Button
+                title="CONFIRM"
+                onPress={async () => {
+                  await userApi.deleteUser()
+                  setVisible(!visible)
+                  setUser(null)
+                  navigation.navigate("LogIn")
+                  Notifier.clearQueue(true)
+                }}
+              />
+              <Dialog.Button
+                title="CANCEL"
+                onPress={() => setVisible(!visible)}
+              />
+            </Dialog.Actions>
+          </Dialog>
         </View>
       ) : null}
     </View>
@@ -106,8 +145,6 @@ const styles = StyleSheet.create({
   },
   basicInfo: {
     alignItems: "center",
-    marginTop: SCREEN_HEIGHT * 0.1,
-    marginBottom: SCREEN_HEIGHT * 0.03,
   },
   profileImg: {
     width: 100,
